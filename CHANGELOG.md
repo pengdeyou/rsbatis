@@ -3,7 +3,7 @@
 本项目的包各自独立发版（Core 的语法层比门面的 API 稳定得多，没必要绑在一起），
 所以下面按**发布批次**记录，每批列出涉及的包版本。日期均为 2026-11-25（首日）。
 
-## 0.1.0-alpha.29 — 多对多关系（**尚未发布**，与 alpha.28 同批待发）
+## 0.1.0-alpha.29 — 多对多关系 + 关系过滤（**尚未发布**，与 alpha.28 同批待发）
 
 ### Added
 
@@ -19,6 +19,21 @@
 - 关联表零命中时不发第二次查询
 - 重复父输入仍各自拿到子集合（`get` + `cloned`，不是 `remove`）
 - 反向关联不提供 `reversed()`，对调关联表两列再建描述符即可
+
+### Added（关系过滤，`has()` 的 Rust 形态）
+
+- `HasMany::exists_filter(parent_col)` / `not_exists_filter(parent_col)` / `exists_sub(parent_col)`：
+  产出 `EXISTS (SELECT 1 FROM 子表 WHERE 子表.fk = 父表.id)`，直接当 `where_` 条件
+- `ManyToMany::exists_filter` / `not_exists_filter`：走"关联表 JOIN 子表"，排除孤儿关联
+- `exists_sub` 可继续 `and_where`，用于"有已发布文章的用户"这类带子表条件的过滤
+
+### Fixed
+
+- **别名查询的投影前缀**：`from_alias("u")` 之后 `column("x")` 仍渲染基表名
+  （`SELECT "h_user"."name" FROM "h_user" AS "u"` → SQLite `no such column: h_user.name`）。
+  改为在渲染时把顶层 `Col` 的基表前缀替换成 `main_alias`，与调用顺序无关
+- `ManyToMany::exists_filter` 不采用"只查关联表"的实现：子被删后关联行还在，会给出
+  "有子"的假结果
 
 ### Fixed（测试）
 

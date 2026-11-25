@@ -833,7 +833,19 @@ impl SelectStmt {
                 if i > 0 {
                     out.push_str(", ");
                 }
-                render_expr_q(c, d, out, params, warnings, 8, qualify);
+                // `column("name")` 塞进来的是 `Col(self.table, name)`，而 `from_alias` 之后
+                // 真实表名在 FROM 里已经不可见了：渲染出 `"h_user"."name" FROM "h_user" AS "u"`
+                // → SQLite 报 `no such column: h_user.name`。
+                // 在**渲染时**替换前缀而不是在 `column()` 里取 `main_alias`，这样与调用顺序无关
+                // （`.column(..).from_alias(..)` 和 `.from_alias(..).column(..)` 都对）。
+                // 只处理顶层 `Col`：`column_expr` 塞进来的复合表达式由调用方自己负责前缀。
+                let resolved = match c {
+                    Expr::Col(t, n) if self.main_alias.is_some() && *t == self.table => {
+                        Expr::Col(self.main_alias.unwrap_or(self.table), n)
+                    }
+                    _ => c.clone(),
+                };
+                render_expr_q(&resolved, d, out, params, warnings, 8, qualify);
             }
         }
 

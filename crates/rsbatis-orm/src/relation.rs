@@ -26,7 +26,7 @@
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
-use rsbatis_core::{select, Column, Entity, SelectStmt};
+use rsbatis_core::{select, BinOp, Column, Entity, Expr, JoinKind, SelectStmt};
 use rsbatis_driver::{Driver, DriverError, ErrorKind, Row};
 
 use crate::from_row::FromRow;
@@ -51,6 +51,35 @@ impl<C> HasMany<C> {
 
     pub fn fk(&self) -> Column<i64> {
         self.fk
+    }
+
+    /// `EXISTS (SELECT 1 FROM 子表 WHERE 子表.fk = parent_col)` —— 直接当筛选条件用。
+    ///
+    /// ```ignore
+    /// // 有文章的用户
+    /// let stmt = select::<User>().where_(Post::user().exists_filter(User::col_id()));
+    /// ```
+    ///
+    /// `parent_col` 必须是**外层**查询里那张父表的列。外层用了别名时记得
+    /// `.of_table("u")` —— 否则渲染出 `users.id` 而 `FROM` 是 `u`，SQLite 直接报
+    /// "no such column"，MySQL 会把它当成……不，MySQL 也报错，但报的是
+    /// "Unknown column 'users.id' in 'where clause'"，找起来一样费劲。
+    pub fn exists_filter(&self, parent_col: Column<i64>) -> Expr {
+        Expr::exists(&self.exists_sub(parent_col))
+    }
+
+    /// `NOT EXISTS (…)`：没有任何子行的父。
+    pub fn not_exists_filter(&self, parent_col: Column<i64>) -> Expr {
+        Expr::not(self.exists_filter(parent_col))
+    }
+
+    /// 子查询本体。公开出来是为了让调用方能叠加条件（比如"有已发布的文章"）。
+    pub fn exists_sub(&self, parent_col: Column<i64>) -> SelectStmt {
+        // 用 `fk.base_table()` 而不是某个 `C::TABLE`：`HasMany<C>` 不要求 `C: Entity`，
+        // 而描述符已经把子表名带在 fk 上了，两者必须一致（`ManyToMany` 那边专门校验过）。
+        SelectStmt::new(self.fk.base_table())
+            .column_expr(Expr::lit(1_i64).as_("__exists"))
+            .and_where(Expr::cmp(BinOp::Eq, self.fk.expr(), parent_col.expr()))
     }
 }
 
@@ -144,6 +173,35 @@ impl<C> ManyToMany<C> {
 
     pub fn child_col(&self) -> Column<i64> {
         self.child_col
+    }
+
+    /// `EXISTS (SELECT 1 FROM 关联表 JOIN 子表 ON … WHERE 关联表.link_parent = parent_col)`
+    ///
+    /// 为什么不是"只查关联表"：关联表里有记录不等于有子 —— 子被删掉时关联行还在，
+    /// 只查关联表会给出"有课程"的假结果。JOIN 一次子表就能排除孤儿关联。
+    ///
+    /// 代价是多一层 JOIN；收益是这条 EXISTS 与 `load_many_to_many` 的口径一致
+    /// （那边也会跳过孤儿关联）。
+    pub fn exists_filter(&self, parent_col: Column<i64>) -> Expr {
+        let on = Expr::cmp(
+            BinOp::Eq,
+            self.child_col.expr(),
+            self.link_child.expr(),
+        );
+        let sub = SelectStmt::new(self.link_table)
+            .column_expr(Expr::lit(1_i64).as_("__exists"))
+            .join_table(JoinKind::Inner, self.child_col.base_table(), on)
+            .and_where(Expr::cmp(
+                BinOp::Eq,
+                self.link_parent.expr(),
+                parent_col.expr(),
+            ));
+        Expr::exists(&sub)
+    }
+
+    /// `NOT EXISTS (…)`：没有关联到任何现存子的父。
+    pub fn not_exists_filter(&self, parent_col: Column<i64>) -> Expr {
+        Expr::not(self.exists_filter(parent_col))
     }
 }
 
