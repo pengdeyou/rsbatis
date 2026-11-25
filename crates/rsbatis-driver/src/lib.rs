@@ -59,6 +59,30 @@ pub trait Driver {
         self.dialect().supports_returning()
     }
 
+    /// 最近一次 `INSERT` 生成的主键值（自增表用）。
+    ///
+    /// 语义与两个引擎各自的实现一致：
+    /// - SQLite：`last_insert_rowid()`，即内部 rowid
+    /// - MySQL/MariaDB：`LAST_INSERT_ID()`，连接级
+    ///
+    /// **不是"业务主键"的可靠来源**：SQLite 的 rowid 与 `TEXT PRIMARY KEY` 之类无关；
+    /// MySQL 在没有自增列的表上插入后不会更新这个值（仍返回上一次的）。
+    /// 所以上层只在没有 `RETURNING` 可用时才走这条路，并做"前后必须变化"的检测。
+    fn last_insert_id(&mut self) -> Result<i64, DriverError> {
+        Err(unsupported("last_insert_id"))
+    }
+
+    /// 把"最近一次自增 id"重置为 0。
+    ///
+    /// **为什么必须有这个**：`LAST_INSERT_ID()` 是连接级的，父表与子表的自增序列会互相
+    /// 覆盖。父 1 拿到 1、子表插完拿到 2，父 2 插进去恰好也是 2 —— 前后一比对"没变化"，
+    /// 于是把一次合法插入误判成失败。重置之后读到的值才必然是"本次插入"的。
+    ///
+    /// SQLite 没有对应的重置 API，所以那边只能走 `RETURNING` 拿精确值。
+    fn reset_last_insert_id(&mut self) -> Result<(), DriverError> {
+        Err(unsupported("reset_last_insert_id"))
+    }
+
     // ---- 事务 ----
     //
     // 默认实现一律返回 `Unsupported`，而不是"假装成功"。事务语义一旦静默降级，

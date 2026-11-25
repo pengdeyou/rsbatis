@@ -92,6 +92,139 @@ impl<D: Driver> Session<D> {
         self.execute(stmt.build(self.dialect()))
     }
 
+    /// 插入一条并取回它的主键值。
+    ///
+    /// 两条路径，优先前者：
+    /// 1. 实体用 `#[rsbatis(primary_key)]` 声明了主键 **且**方言支持 `RETURNING`
+    ///    → `INSERT … RETURNING <pk>`，拿回来的是**业务主键本身**，最准确；
+    /// 2. 否则 `add` + `Driver::last_insert_id()`，拿的是引擎的自增值。
+    ///
+    /// 第 2 条路带一个检测：插入前后 `last_insert_id` 必须**变化**，否则报错。这不只是
+    /// 防御性代码 —— SQLite 的 `last_insert_rowid()` 是**内部 rowid**，与
+    /// `TEXT PRIMARY KEY` 这类业务主键毫无关系；MySQL 在没有自增列的表上插入后
+    /// 该值根本不变（返回上一次的）。两种情况都会静默给出一个"看起来像 id"的数。
+    pub fn insert_one_id<E: rsbatis_core::Entity>(&mut self, model: &E) -> Result<i64, DriverError> {
+        let mut cols: Vec<(&'static str, rsbatis_core::Value)> = Vec::new();
+        model.column_values(&mut cols);
+        if cols.is_empty() {
+            return Err(DriverError::new(
+                ErrorKind::Other,
+                format!("{} 没有可写的列", E::TABLE),
+            ));
+        }
+
+        // 路径 1：RETURNING（SQLite 3.35+ / MariaDB）。只有声明了主键才有列可返回。
+        if let Some(pk) = E::PRIMARY_KEY.first().copied() {
+            if self.driver.supports_returning() {
+                let mut stmt = rsbatis_core::insert::<E>();
+                for (col, value) in cols {
+                    stmt = stmt.set_raw(col, value);
+                }
+                let sql = stmt.returning([pk]).build(self.dialect());
+                return match self.fetch_one(sql)? {
+                    Some(row) => row.get::<i64>(0),
+                    None => Err(DriverError::new(
+                        ErrorKind::Other,
+                        format!("INSERT … RETURNING 没有返回行（{}）", E::TABLE),
+                    )),
+                };
+            }
+        }
+
+        // 调用方显式给了主键：插进去之后原样返回，不必去碰自增计数器。
+        // 这条必须放在检测之前 —— MariaDB 没有 `RETURNING`，若显式插入后仍去读
+        // `LAST_INSERT_ID()`，它根本不会变化（自增没被触发），会被"检测"误判成失败。
+        if let Some(pk) = E::PRIMARY_KEY.first().copied() {
+            if let Some((_, rsbatis_core::Value::I64(v))) =
+                cols.iter().find(|(col, _)| *col == pk)
+            {
+                let v = *v;
+                self.add(model)?;
+                return Ok(v);
+            }
+        }
+
+        // 路径 2：只剩"没有 RETURNING 可用"的情况（当前是 MySQL）。
+        //
+        // SQLite 在这条路上是不可信的：`last_insert_rowid()` 返回内部 rowid，与
+        // `TEXT PRIMARY KEY` 之类毫无关系，而且会被子表插入覆盖。所以 SQLite 上要求
+        // 声明主键走 RETURNING，没声明就直接拒绝 —— 比给一个"看起来像 id"的错数值好。
+        if self.dialect() == rsbatis_core::Dialect::Sqlite {
+            return Err(DriverError::new(
+                ErrorKind::Unsupported,
+                format!(
+                    "{} 没有声明主键，SQLite 上无法可靠回填自增 id：请给主键字段加 \
+                     #[rsbatis(primary_key)]，insert_one_id 会走 INSERT … RETURNING 拿回真实主键",
+                    E::TABLE
+                ),
+            ));
+        }
+
+        // 插入前把会话的 LAST_INSERT_ID 归零，否则读到的可能是**别的表**（比如刚插完的子表）
+        // 的值，再一比对"没变化"就把一次合法插入误判成失败。
+        self.driver.reset_last_insert_id()?;
+        self.add(model)?;
+        let after = self.driver.last_insert_id()?;
+        if after == 0 {
+            return Err(DriverError::new(
+                ErrorKind::Unsupported,
+                format!(
+                    "插入 {} 后没有拿到自增值（LAST_INSERT_ID 为 0）：这张表可能没有 \
+                     自增主键。请给主键字段加 #[rsbatis(primary_key)]，或改用自己生成主键 \
+                     再 add()",
+                    E::TABLE
+                ),
+            ));
+        }
+        Ok(after)
+    }
+
+    /// 父 + 子一起插：插父 → 取回 id 回填到父 → 用这个 id 造子 → 批量插子。
+    ///
+    /// 这是 SQLAlchemy `cascade="save-update"` 的显式版本。透明版做不到：
+    /// `add` 是泛型函数，无法在"父模型插入时"发现它挂着哪些子 —— Rust 没有运行时的
+    /// 关系元数据，`#[derive(Entity)]` 也没法凭空生成"我的子集合"。
+    ///
+    /// ```ignore
+    /// db.insert_tree(
+    ///     &mut users,                       // 逐个插入，id 回填到每个 user
+    ///     |u, id| u.id = id,                // 回填方式由调用方决定（字段名它知道）
+    ///     |u| u.posts.iter().map(|p| Post { user_id: u.id, ..p.clone() }).collect(),
+    /// )
+    /// ```
+    ///
+    /// **整批在一个事务里**：任何一条失败（父、子都一样）整批回滚，不会留下"父已入库、
+    /// 子没跟上"的半截数据。
+    ///
+    /// 返回 `(插入的父数, 插入的子数)`。
+    pub fn insert_tree<P, C>(
+        &mut self,
+        parents: &mut [P],
+        set_id: impl Fn(&mut P, i64),
+        mut children_of: impl FnMut(&P) -> Vec<C>,
+    ) -> Result<(usize, usize), DriverError>
+    where
+        P: rsbatis_core::Entity,
+        C: rsbatis_core::Entity,
+    {
+        let mut tx = self.transaction()?;
+        let mut parent_count = 0usize;
+        let mut child_count = 0usize;
+        for p in parents.iter_mut() {
+            let id = tx.insert_one_id(&*p)?;
+            set_id(p, id);
+            parent_count += 1;
+            // 必须在 set_id **之后**取子：闭包里要用刚回填的 id
+            let children = children_of(&*p);
+            if !children.is_empty() {
+                child_count += children.len();
+                tx.add_all(&children)?;
+            }
+        }
+        tx.commit()?;
+        Ok((parent_count, child_count))
+    }
+
     /// upsert：按主键插入，冲突时用本次的字段值覆盖其余列。
     ///
     /// 对应 SQLAlchemy 里 `session.merge(obj)` 想达到的效果，但**只发一条语句**
@@ -250,6 +383,11 @@ impl<'a, D: Driver> Transaction<'a, D> {
     }
 
     /// 事务内的 upsert。
+    /// 事务内插入并取回主键（转发到 `Session::insert_one_id`，同一个连接）。
+    pub fn insert_one_id<E: rsbatis_core::Entity>(&mut self, model: &E) -> Result<i64, DriverError> {
+        self.session.insert_one_id(model)
+    }
+
     pub fn save<E: rsbatis_core::Entity>(&mut self, model: &E) -> Result<usize, DriverError> {
         self.session.save(model)
     }

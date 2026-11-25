@@ -116,6 +116,17 @@ impl MySqlDriver {
 }
 
 impl Driver for MySqlDriver {
+    fn last_insert_id(&mut self) -> Result<i64, DriverError> {
+        MySqlDriver::last_insert_id(self)
+    }
+
+    fn reset_last_insert_id(&mut self) -> Result<(), DriverError> {
+        // `LAST_INSERT_ID(0)` 直接设置会话值；`DO` 语法避免把结果集当查询结果用
+        self.conn
+            .query_drop("DO LAST_INSERT_ID(0)")
+            .map_err(map_err)
+    }
+
     fn begin(&mut self) -> Result<(), DriverError> {
         MySqlDriver::begin(self)
     }

@@ -3,7 +3,7 @@
 本项目的包各自独立发版（Core 的语法层比门面的 API 稳定得多，没必要绑在一起），
 所以下面按**发布批次**记录，每批列出涉及的包版本。日期均为 2026-11-25（首日）。
 
-## 0.1.0-alpha.29 — 多对多关系 + 关系过滤（**尚未发布**，与 alpha.28 同批待发）
+## 0.1.0-alpha.29 — 多对多关系 + 关系过滤 + 级联写入（**尚未发布**，与 alpha.28 同批待发）
 
 ### Added
 
@@ -34,6 +34,24 @@
   改为在渲染时把顶层 `Col` 的基表前缀替换成 `main_alias`，与调用顺序无关
 - `ManyToMany::exists_filter` 不采用"只查关联表"的实现：子被删后关联行还在，会给出
   "有子"的假结果
+
+### Added（级联写入）
+
+- `Session::insert_tree(&mut parents, set_id, children_of)`：插父 → 回填 id → 造子 → 批量插子，
+  **整批一个事务**，任一条失败全部回滚
+- `Session::insert_one_id(model)` / `Transaction::insert_one_id`：插入并取回主键
+  - 声明了 `#[rsbatis(primary_key)]` 且方言支持 RETURNING → `INSERT … RETURNING <pk>`（真实主键）
+  - 否则 `reset → INSERT → LAST_INSERT_ID()`
+- `Driver::last_insert_id` / `Driver::reset_last_insert_id`（SQLite 实现前者，MySQL 两者）
+- 显式给了主键时直接返回该值、不碰自增计数器（否则 MySQL 上会误判"没有变化"）
+
+### Semantics（自增主键的两条硬约束）
+
+- 主键字段必须是 `Option<T>`：`None` 才能让数据库自增；`i64` 会显式写 0，自增永不触发
+- SQLite 上未声明主键时 `insert_one_id` **直接拒绝**（`last_insert_rowid` 是内部 rowid，
+  与业务主键无关且会被子表覆盖），而不是给一个看起来像 id 的错数
+- MySQL 上插入前归零 `LAST_INSERT_ID`（连接级，否则父/子自增序列互相覆盖导致误判失败）；
+  归零后仍为 0 说明表没有自增列，直接报错
 
 ### Fixed（测试）
 

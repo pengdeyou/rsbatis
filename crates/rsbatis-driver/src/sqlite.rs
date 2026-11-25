@@ -99,6 +99,10 @@ impl Driver for SqliteDriver {
         self.conn.execute_batch(sql).map_err(map_err)
     }
 
+    fn last_insert_id(&mut self) -> Result<i64, DriverError> {
+        Ok(self.conn.last_insert_rowid())
+    }
+
     /// rusqlite 自带权威判断：autocommit 关闭就说明在事务里。
     fn in_transaction(&self) -> bool {
         !self.conn.is_autocommit()
