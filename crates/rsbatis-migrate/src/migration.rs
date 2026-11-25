@@ -30,6 +30,16 @@ impl Migration {
         self.down = Some(down.into());
         self
     }
+
+    /// `up` 里是否有真语句（剥掉注释后非空）。
+    ///
+    /// 校验放在**执行时**而不是加载时：`rsboot`/`rsbatis-cli migrate new` 生成的骨架
+    /// 只有注释占位，用户先建文件、后填 SQL。加载时就拒绝会让 `status` 直接报错，
+    /// 用户连"我有哪些迁移"都看不到。执行时才拒绝，既能让文件先存在，
+    /// 又不会出现"记成已应用、其实什么都没做"。
+    pub fn has_up_statements(&self) -> bool {
+        has_statements(&self.up)
+    }
 }
 
 /// 从目录加载迁移。
@@ -70,6 +80,15 @@ pub fn from_dir(dir: impl AsRef<Path>) -> Result<Vec<Migration>, MigrateError> {
         })?;
         let sql = std::fs::read_to_string(&path)?;
 
+        // 只有注释、没有语句的 down 文件等价于"不提供回滚"。
+        // 否则 `down` 会执行一段空 SQL —— 那会打印"回滚成功"却什么都没做，
+        // 而这正是最该避免的一类谎报。脚手架生成的 down 模板就是这种形态。
+        let sql = if is_down && !has_statements(&sql) {
+            String::new()
+        } else {
+            sql
+        };
+
         if is_down {
             if downs.insert(version, sql).is_some() {
                 return Err(MigrateError::Invalid(format!(
@@ -97,7 +116,72 @@ pub fn from_dir(dir: impl AsRef<Path>) -> Result<Vec<Migration>, MigrateError> {
             version,
             name,
             up,
-            down: downs.remove(&version),
+            // 空串一律当"没有 down"：空 SQL 执行起来没有意义，留着只会让人以为可回滚
+            down: downs.remove(&version).filter(|d| !d.trim().is_empty()),
         })
         .collect())
+}
+
+/// 除去注释与空白后是否还有语句。
+///
+/// **不能用 `split_statements` 判断**：切分器为了找边界会跳过注释，但返回的片段
+/// 仍是原始子串（注释留在里面）。于是"全是注释"的文本会得到一段非空片段，
+/// 看起来"有语句"——我第一版就是这么误判的，结果一个只有注释的 down 被执行，
+/// 打印"回滚成功"却什么都没做。
+fn has_statements(sql: &str) -> bool {
+    !strip_comments(sql).trim().is_empty()
+}
+
+/// 去掉 `--` / `#` 行注释与 `/* */` 块注释，字符串与标识符原样保留。
+///
+/// 字符串里的 `--` 是数据不是注释，所以必须先认引号。
+fn strip_comments(sql: &str) -> String {
+    let b = sql.as_bytes();
+    let len = b.len();
+    let mut out = String::with_capacity(len);
+    let mut i = 0usize;
+    while i < len {
+        match b[i] {
+            q @ (b'\'' | b'"' | b'`') => {
+                out.push(b[i] as char);
+                i += 1;
+                while i < len {
+                    out.push(b[i] as char);
+                    if b[i] == q {
+                        // '' 是转义的单引号，继续留在字符串里
+                        if q == b'\'' && i + 1 < len && b[i + 1] == q {
+                            out.push(b[i + 1] as char);
+                            i += 2;
+                            continue;
+                        }
+                        i += 1;
+                        break;
+                    }
+                    i += 1;
+                }
+            }
+            b'-' if i + 1 < len && b[i + 1] == b'-' => {
+                while i < len && b[i] != b'\n' {
+                    i += 1;
+                }
+            }
+            b'#' => {
+                while i < len && b[i] != b'\n' {
+                    i += 1;
+                }
+            }
+            b'/' if i + 1 < len && b[i + 1] == b'*' => {
+                i += 2;
+                while i + 1 < len && !(b[i] == b'*' && b[i + 1] == b'/') {
+                    i += 1;
+                }
+                i = (i + 2).min(len);
+            }
+            _ => {
+                out.push(b[i] as char);
+                i += 1;
+            }
+        }
+    }
+    out
 }

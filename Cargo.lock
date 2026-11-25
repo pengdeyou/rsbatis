@@ -736,6 +736,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "rsbatis-cli"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "chrono",
+ "rsbatis",
+]
+
+[[package]]
 name = "rsbatis-core"
 version = "0.1.0-alpha.29"
 dependencies = [
@@ -782,6 +790,11 @@ dependencies = [
 [[package]]
 name = "rsboot"
 version = "0.1.0-alpha.1"
+dependencies = [
+ "rsbatis",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "rsqlite-vfs"

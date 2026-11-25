@@ -159,6 +159,14 @@ impl<'a, D: Driver> Migrator<'a, D> {
     }
 
     fn apply(&mut self, m: &Migration) -> Result<(), MigrateError> {
+        if !m.has_up_statements() {
+            // 只有注释的 up 如果照常执行，元数据会记成"已应用"，而数据库里什么都没建。
+            // 之后每次 up 都会跳过它——最难查的一类问题。
+            return Err(MigrateError::Invalid(format!(
+                "迁移 {}（{}）里没有语句（只有注释）。请写 SQL，或删掉这支迁移",
+                m.version, m.name
+            )));
+        }
         let d = self.session.dialect();
         let mut tx = self.session.transaction()?;
         tx.execute_batch(&m.up)?;

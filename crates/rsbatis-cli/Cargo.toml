@@ -1,0 +1,19 @@
+[package]
+name = "rsbatis-cli"
+version = "0.1.0-alpha.1"
+edition = "2021"
+rust-version = "1.80"
+description = "Command-line tool for rsbatis: versioned migrations and project scaffolding, hand-rolled argument parsing (no clap)."
+license = "MIT OR Apache-2.0"
+keywords = ["orm", "sql", "cli", "migration", "scaffold"]
+categories = ["database", "command-line-utilities"]
+readme = "README.md"
+documentation = "https://docs.rs/rsbatis-cli"
+
+[dependencies]
+rsbatis = { version = "0.1.0-alpha.29", path = "../rsbatis", features = ["sqlite", "mysql", "migrate"] }
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+
+[[bin]]
+name = "rsbatis"
+path = "src/main.rs"

@@ -65,6 +65,12 @@ pub use rsbatis_orm::{
 #[cfg(all(feature = "orm", feature = "migrate"))]
 pub use rsbatis_migrate::{from_dir, MigrateError, Migration, Migrator, Status, MIGRATIONS_TABLE};
 
+// 统一入口：按 URL 打开数据库（SQLAlchemy 的 `create_engine`）
+#[cfg(any(feature = "sqlite", feature = "mysql"))]
+mod engine;
+#[cfg(any(feature = "sqlite", feature = "mysql"))]
+pub use engine::{create_engine, dialect_of, Engine};
+
 /// Implementation detail used by the `where_!` macro expansion. Not public API.
 #[doc(hidden)]
 pub mod __private {

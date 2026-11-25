@@ -8,4 +8,5 @@ members = [
     "crates/rsbatis-orm",
     "crates/rsbatis-migrate",
     "crates/rsboot",
+    "crates/rsbatis-cli",
 ]
