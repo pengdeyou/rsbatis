@@ -32,6 +32,18 @@ pub mod sqlite;
 pub mod mysql_driver;
 
 pub use error::{DriverError, ErrorKind};
+
+/// 装 MySQL socket 的读写钩子。
+///
+/// 由应用框架在 worker 启动时调用：传进来的函数替代 `TcpStream` 的阻塞读写，
+/// 于是数据库等待也能让出 worker。**不装就是上游的阻塞行为**，功能不受影响。
+#[cfg(feature = "mysql")]
+pub fn set_mysql_socket_hooks(
+    read: ::mysql::ReadHook,
+    write: ::mysql::WriteHook,
+) {
+    ::mysql::set_io_hooks(read, write);
+}
 pub use row::Row;
 
 use rsbatis_core::Sql;

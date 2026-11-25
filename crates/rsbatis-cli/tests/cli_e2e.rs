@@ -271,7 +271,7 @@ fn migrate_new_generates_a_pair_and_refuses_overwrite() {
 
     let files: Vec<String> = fs::read_dir(&f.dir)
         .unwrap()
-        .map(|e| e.unwrap().file_name().to_string_lossy().to_string())
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
         .collect();
     let ups: Vec<&String> = files.iter().filter(|n| !n.contains(".down.")).collect();
     assert_eq!(ups.len(), 1, "{files:?}");
@@ -290,9 +290,8 @@ fn migrate_new_generates_a_pair_and_refuses_overwrite() {
     assert_eq!(o.code, 0, "{}", o.stderr);
     let second = fs::read_dir(&f.dir)
         .unwrap()
-        .map(|e| e.unwrap().file_name().to_string_lossy().to_string())
-        .filter(|n| n.ends_with("_add_phone.sql"))
-        .next()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .find(|n| n.ends_with("_add_phone.sql"))
         .expect("第二支没生成");
     let seq2: u32 = second.split('_').next().unwrap()[8..].parse().unwrap();
     let seq1: u32 = ver[8..].parse().unwrap();

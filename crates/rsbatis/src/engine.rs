@@ -319,7 +319,7 @@ mod tests {
         db.execute_batch("CREATE TABLE t (a INTEGER)")
             .unwrap();
         let rows = db
-            .fetch(&rsbatis_core::SelectStmt::new("t").column("a"))
+            .fetch(rsbatis_core::SelectStmt::new("t").column("a"))
             .unwrap();
         assert_eq!(rows.len(), 0);
         assert_eq!(db.dialect(), Dialect::Sqlite);
@@ -335,7 +335,7 @@ mod tests {
         // 写成 `sqlite://{path}`（两段）会被解析成相对路径 `tmp/...` 而打不开——
         // 我第一版测试就是这么挂的，说明这条规则必须显式告诉用户。
         {
-            let mut db = Engine::open(&format!("sqlite:///{}", path.display().to_string()))
+            let mut db = Engine::open(&format!("sqlite:///{}", path.display()))
                 .unwrap();
             db.execute_batch("CREATE TABLE t (a INTEGER)").unwrap();
         }
@@ -350,11 +350,11 @@ mod tests {
         db.execute_batch("CREATE TABLE t (a INTEGER)")
             .unwrap();
         let mut tx = db.transaction().unwrap();
-        tx.execute(&rsbatis_core::InsertStmt::new("t").set_raw("a", 1.into()))
+        tx.execute(rsbatis_core::InsertStmt::new("t").set_raw("a", 1.into()))
             .unwrap();
         tx.commit().unwrap();
         let rows = db
-            .fetch(&rsbatis_core::SelectStmt::new("t").column("a"))
+            .fetch(rsbatis_core::SelectStmt::new("t").column("a"))
             .unwrap();
         assert_eq!(rows.len(), 1);
     }

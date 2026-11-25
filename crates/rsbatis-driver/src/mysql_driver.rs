@@ -39,10 +39,22 @@ pub struct MySqlDriver {
 
 impl MySqlDriver {
     /// 用 URL 连接：`mysql://user:pass@127.0.0.1:3306/db`
+    ///
+    /// `mysql+co://` 是同一条路径，但底层 socket 走装的钩子（rsboot 里就成了
+    /// 协程：等数据库响应时让出 worker）。钩子没装时两者行为完全相同，
+    /// 只是多一层间接——所以默认用 `mysql://`，要协程化再显式写 `mysql+co://`。
     pub fn connect(url: &str) -> Result<Self, DriverError> {
-        let opts = Opts::from_url(url)
-            .map_err(|e| DriverError::new(ErrorKind::Connection, format!("URL 解析失败：{e}")))?;
-        let conn = Conn::new(opts).map_err(map_err)?;
+        let (url, co) = match url.strip_prefix("mysql+co://") {
+            Some(rest) => (format!("mysql://{rest}"), true),
+            None => (url.to_string(), false),
+        };
+        ::mysql::set_co_mode(co);
+        let result = Opts::from_url(&url)
+            .map_err(|e| DriverError::new(ErrorKind::Connection, format!("URL 解析失败：{e}")))
+            .and_then(|opts| Conn::new(opts).map_err(map_err));
+        // 无论成败都要还原：建连是一次性的，之后这个线程不该还带着标志
+        ::mysql::set_co_mode(false);
+        let conn = result?;
         Ok(Self { conn, in_tx: false })
     }
 

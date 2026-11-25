@@ -53,6 +53,8 @@ pub use rsbatis_driver::mysql_driver::MySqlDriver;
 pub use rsbatis_driver::sqlite::SqliteDriver;
 #[cfg(any(feature = "sqlite", feature = "mysql"))]
 pub use rsbatis_driver::{Driver, DriverError, ErrorKind, Row};
+#[cfg(feature = "mysql")]
+pub use rsbatis_driver::set_mysql_socket_hooks;
 
 // Session / 事务 / FromRow：开了任意驱动就能用
 #[cfg(feature = "orm")]

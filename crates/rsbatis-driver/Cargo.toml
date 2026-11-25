@@ -12,7 +12,9 @@ documentation = "https://docs.rs/rsbatis-driver"
 
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["std", "alloc"], optional = true }
-mysql = { version = "28", default-features = false, optional = true }
+# 指向仓库内的 fork：协议逻辑与上游一致，只把底层 socket 换成可插拔后端。
+# 发布顺序：先发 rsbatis-mysql（本 fork），再发 driver——否则 registry 上取不到。
+mysql = { version = "=28.0.4", package = "rsbatis-mysql", path = "../../vendor/mysql", default-features = false, optional = true }
 flate2 = { version = "1", default-features = false, optional = true }
 rsbatis-core = { version = "0.1.0-alpha.29", path = "../rsbatis-core" }
 rusqlite = { version = "0.43", features = ["bundled"], optional = true }

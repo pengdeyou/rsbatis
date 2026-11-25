@@ -463,17 +463,16 @@ fn new_project(cli: &Cli, name: &str) -> CmdResult {
          name = \"{name}\"\n\
          path = \"src/main.rs\"\n"
     );
-    let main_rs = format!(
-        "use rsbatis::create_engine;\n\
+    // 没有插值，直接是一段固定模板——用裸字符串，别用 `format!` 再把花括号转义一遍
+    let main_rs = "use rsbatis::create_engine;\n\
          \n\
-         fn main() -> Result<(), Box<dyn std::error::Error>> {{\n\
+         fn main() -> Result<(), Box<dyn std::error::Error>> {\n\
              let url = std::env::var(\"DATABASE_URL\")\n\
                  .unwrap_or_else(|_| \"sqlite:///app.db\".to_string());\n\
              let db = create_engine(&url)?;\n\
-             println!(\"已连接 {{:?}}：{{url}}\", db.dialect());\n\
+             println!(\"已连接 {:?}：{url}\", db.dialect());\n\
              Ok(())\n\
-         }}\n"
-    );
+         }\n";
     let readme = format!(
         "# {name}\n\
          \n\
@@ -492,7 +491,7 @@ fn new_project(cli: &Cli, name: &str) -> CmdResult {
 
     for (p, body) in [
         (root.join("Cargo.toml"), cargo.as_str()),
-        (src.join("main.rs"), main_rs.as_str()),
+        (src.join("main.rs"), main_rs),
         (root.join("README.md"), readme.as_str()),
         (root.join(".gitignore"), gitignore),
         (mig.join("20260101001_init.sql"), init_up),
