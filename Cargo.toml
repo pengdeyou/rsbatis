@@ -1,0 +1,11 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/rsbatis-core",
+    "crates/rsbatis-macros",
+    "crates/rsbatis",
+    "crates/rsbatis-driver",
+    "crates/rsbatis-orm",
+    "crates/rsbatis-migrate",
+    "crates/rsboot",
+]

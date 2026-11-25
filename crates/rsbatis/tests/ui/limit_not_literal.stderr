@@ -1,0 +1,5 @@
+error: rsbatis: limit 后面必须是整数常量（不支持变量或表达式）
+  --> tests/ui/limit_not_literal.rs:13:55
+   |
+13 |     let _ = select! { User where User.age >= 18 limit n };
+   |                                                       ^

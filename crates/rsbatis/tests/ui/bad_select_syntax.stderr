@@ -1,0 +1,5 @@
+error: rsbatis: select! 里出现了无法归段的 token。支持的段：`join <Entity> on <expr>` / `where <expr>` / `order_by <expr> [asc|desc]` / `limit <int>` / `offset <int>`
+  --> tests/ui/bad_select_syntax.rs:12:28
+   |
+12 |     let _ = select! { User User.id == 1 };
+   |                            ^^^^

@@ -1,0 +1,8 @@
+error[E0599]: no associated function or constant named `col_nmae` found for struct `User` in the current scope
+  --> tests/ui/unknown_column.rs:12:26
+   |
+ 5 | struct User {
+   | ----------- associated function or constant `col_nmae` not found for this struct
+...
+12 |     let _ = where_!(User.nmae == "x");
+   |                          ^^^^ associated function or constant not found in `User`

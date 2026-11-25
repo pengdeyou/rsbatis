@@ -1,0 +1,20 @@
+[package]
+name = "rsbatis-core"
+version = "0.1.0-alpha.29"
+edition = "2021"
+rust-version = "1.80"
+description = "Expression AST, column proxies and SQL rendering for rsbatis — the SQLAlchemy-Core-like layer of a Rust ORM."
+license = "MIT OR Apache-2.0"
+keywords = ["orm", "sql", "query-builder", "database"]
+categories = ["database"]
+readme = "README.md"
+documentation = "https://docs.rs/rsbatis-core"
+
+[dependencies]
+# 零依赖是默认状态：chrono 只有显式开 feature 才进来。
+# 理由：Core 层的价值在于"能被单独信任、单独审计"，日期不是所有人都在用的能力。
+chrono = { version = "0.4", default-features = false, features = ["std", "alloc"], optional = true }
+
+[features]
+default = []
+chrono = ["dep:chrono"]

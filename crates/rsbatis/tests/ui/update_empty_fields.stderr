@@ -1,0 +1,5 @@
+error: rsbatis: update! 至少要给一个字段，例如 `update!(User { age: 25 } …)`
+  --> tests/ui/update_empty_fields.rs:11:21
+   |
+11 |     let _ = update!(User {});
+   |                     ^^^^

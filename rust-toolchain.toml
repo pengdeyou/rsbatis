@@ -1,0 +1,11 @@
+# 锁定工具链版本。
+#
+# 原因很具体：`trybuild` 的快照（crates/rsbatis/tests/ui/*.stderr）逐字记录 rustc 的
+# 诊断输出，换一个 rustc 就可能多一个 help 行或换一种措辞，CI 会在毫无代码改动时变红。
+# 锁定之后，"编译错误长什么样"成为一个可回归的事实，而不是随工具链漂移。
+#
+# 升级流程：改这里的版本号 → `TRYBUILD=overwrite cargo test -p rsbatis --features sqlite --test ui_diagnostics`
+# → 逐条审 diff，确认变化是"rustc 措辞变了"而不是"我们的宏退化了"。
+[toolchain]
+channel = "1.100.0"
+components = ["rustfmt", "clippy"]

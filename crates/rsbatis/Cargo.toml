@@ -1,0 +1,34 @@
+[package]
+name = "rsbatis"
+version = "0.1.0-alpha.29"
+edition = "2021"
+rust-version = "1.80"
+description = "A SQLAlchemy-style ORM for Rust: write select! { User where User.age >= 18 } instead of filter(Column::Age.gte(18))."
+license = "MIT OR Apache-2.0"
+keywords = ["orm", "sql", "sqlalchemy", "database", "sqlite"]
+categories = ["database"]
+readme = "README.md"
+documentation = "https://docs.rs/rsbatis"
+
+[dependencies]
+rsbatis-core = { version = "0.1.0-alpha.29", path = "../rsbatis-core" }
+rsbatis-macros = { version = "0.1.0-alpha.29", path = "../rsbatis-macros" }
+rsbatis-driver = { version = "0.1.0-alpha.29", path = "../rsbatis-driver", optional = true }
+rsbatis-orm = { version = "0.1.0-alpha.29", path = "../rsbatis-orm", optional = true }
+rsbatis-migrate = { version = "0.1.0-alpha.29", path = "../rsbatis-migrate", optional = true }
+
+[dev-dependencies]
+# 测试里直接用 chrono 类型构造成立值（不经过门面包转出，用户侧同样自己依赖 chrono）
+chrono = "0.4"
+# 编译期诊断基线：把"用户写错时看到什么"钉成快照，改宏之后不可能无声退化
+trybuild = "1"
+
+[features]
+default = []
+migrate = ["dep:rsbatis-migrate"]
+# Session / Transaction / FromRow：与具体驱动无关，但实际用起来总要有驱动，所以被 sqlite/mysql 带上
+orm = ["dep:rsbatis-orm"]
+# 日期时间支持：值模型 + 双向转换，与方言无关
+chrono = ["rsbatis-core/chrono", "rsbatis-driver/chrono"]
+sqlite = ["dep:rsbatis-driver", "orm", "rsbatis-driver/sqlite"]
+mysql = ["dep:rsbatis-driver", "orm", "rsbatis-driver/mysql"]

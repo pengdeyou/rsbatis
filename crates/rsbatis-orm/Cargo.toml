@@ -1,0 +1,16 @@
+[package]
+name = "rsbatis-orm"
+version = "0.1.0-alpha.29"
+edition = "2021"
+rust-version = "1.80"
+description = "Session, transactions, connection pool, row mapping and eager-loading relations for rsbatis."
+license = "MIT OR Apache-2.0"
+keywords = ["orm", "sql", "session", "database", "transaction"]
+categories = ["database"]
+readme = "README.md"
+documentation = "https://docs.rs/rsbatis-orm"
+
+
+[dependencies]
+rsbatis-core = { version = "0.1.0-alpha.29", path = "../rsbatis-core" }
+rsbatis-driver = { version = "0.1.0-alpha.29", path = "../rsbatis-driver" }

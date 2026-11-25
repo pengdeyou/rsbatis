@@ -1,0 +1,5 @@
+error: rsbatis: `user` 不是实体类型名。列引用必须写成 `User.age` 且实体名首字母大写；局部变量的字段不参与 SQL 重写
+  --> tests/ui/lowercase_entity.rs:11:21
+   |
+11 |     let _ = where_!(user.id == 1);
+   |                     ^^^^

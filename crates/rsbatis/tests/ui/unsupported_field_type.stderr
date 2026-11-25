@@ -1,0 +1,5 @@
+error: rsbatis: 字段类型 `std::time::Duration` 没有对应的 SQL 列映射。当前支持 i8..i64 / u8..u64 / f32 / f64 / bool / String / Vec<u8> / NaiveDateTime（需开 chrono feature），可空请写成 Option<T>
+ --> tests/ui/unsupported_field_type.rs:8:11
+  |
+8 |     when: std::time::Duration,
+  |           ^^^^^^^^^^^^^^^^^^^

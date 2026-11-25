@@ -1,0 +1,5 @@
+error: rsbatis: #[derive(Entity)] 需要具名字段，元组结构体不支持
+ --> tests/ui/tuple_struct.rs:6:13
+  |
+6 | struct Tuple(i64, String);
+  |             ^^^^^^^^^^^^^
