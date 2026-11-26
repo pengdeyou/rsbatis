@@ -126,7 +126,11 @@ impl Driver for SqliteDriver {
 
         let ncols = stmt.column_count();
         // rusqlite 0.43 的 column_names() 返回迭代器而不是 Vec
-        let names: Vec<String> = stmt.column_names().map(|s| s.to_string()).collect();
+        let names: std::sync::Arc<[String]> = std::sync::Arc::from(
+            stmt.column_names()
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>(),
+        );
 
         let mut rows = stmt
             .query(params_from_iter(params.iter().map(|p| p.as_ref())))
@@ -138,7 +142,7 @@ impl Driver for SqliteDriver {
             for i in 0..ncols {
                 vals.push(from_sqlite_ref(r.get_ref(i).map_err(map_err)?));
             }
-            out.push(Row::new(names.clone(), vals));
+            out.push(Row::from_shared(std::sync::Arc::clone(&names), vals));
         }
         Ok(out)
     }

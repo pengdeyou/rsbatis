@@ -4,18 +4,34 @@
 //! 转成业务想要的 Rust 类型。转换是**严格**的：`i64` 读进 `i32` 会检查范围，
 //! 类型不符直接报错，绝不静默截断。
 
+use std::sync::Arc;
+
 use rsbatis_core::Value;
 
 use crate::error::DriverError;
 
+/// 一行结果。
+///
+/// 列名是**整个结果集共享**的一份（`Arc<[String]>`）：1000 行 × 8 列如果每行各存一份，
+/// 就是 8000 次 `String` 分配与复制，而这部分与数据内容完全无关。共享之后每行只多一次
+/// 原子计数。
 #[derive(Clone, Debug)]
 pub struct Row {
-    columns: Vec<String>,
+    columns: Arc<[String]>,
     values: Vec<Value>,
 }
 
 impl Row {
     pub fn new(columns: Vec<String>, values: Vec<Value>) -> Self {
+        debug_assert_eq!(columns.len(), values.len(), "列数与值数不一致");
+        Self {
+            columns: Arc::from(columns),
+            values,
+        }
+    }
+
+    /// 用已共享的列名构造一行。驱动在取结果时应当走这条路，而不是每行 `new` 一次。
+    pub fn from_shared(columns: Arc<[String]>, values: Vec<Value>) -> Self {
         debug_assert_eq!(columns.len(), values.len(), "列数与值数不一致");
         Self { columns, values }
     }

@@ -413,6 +413,32 @@ instead of trusting the exit code.
 - **MySQL DDL cannot be rolled back**: DDL implicitly commits, so a migration that fails midway
   leaves partial tables. `supports_transactional_ddl()` reports `false` there.
 
+## Performance notes
+
+`--release`, 4-core Linux VM, 8-column rows, 200k iterations. Reproduce with
+`cargo run --release --example row_bench -p rsbatis-driver` and
+`cargo run --release --features sqlite --example row_decode_bench`.
+
+| step | cost |
+| --- | --- |
+| build row (shared column names) | 67 ns |
+| build row (clone names per row, old path) | 223 ns |
+| decode 8 columns into a model | 162 ns |
+| render `SELECT *` with one predicate | 260 ns |
+
+The old path cloned the column-name `Vec<String>` for **every** row — 8,000 `String` allocations
+for a 1,000-row × 8-column query, all carrying the same eight names. The name list is now one
+`Arc<[String]>` per result set, shared by every row: 3.3× faster row construction, and the saving
+scales with rows × columns instead of staying constant.
+
+Rendering is not a bottleneck: one `SELECT` with a predicate is 260 ns, while decoding a single row
+is 162 ns — at 1,000 rows the decoder is ~600× the cost of the renderer. Optimizing SQL string
+building further would be measuring nothing.
+
+The next real win is **owned decoding**: `Row` borrows its values, so a `String` column is allocated
+once when the row is read and again when the model takes a copy. Consuming the row instead (`from_row_owned`,
+moving `Value::Text` out) should cut roughly a third of the per-row decode cost.
+
 ## License
 
 MIT OR Apache-2.0.

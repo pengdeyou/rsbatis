@@ -175,12 +175,14 @@ impl Driver for MySqlDriver {
             .exec_iter(sql.text.as_str(), params)
             .map_err(map_err)?;
 
-        let names: Vec<String> = result
-            .columns()
-            .as_ref()
-            .iter()
-            .map(|c| c.name_str().to_string())
-            .collect();
+        let names: std::sync::Arc<[String]> = std::sync::Arc::from(
+            result
+                .columns()
+                .as_ref()
+                .iter()
+                .map(|c| c.name_str().to_string())
+                .collect::<Vec<String>>(),
+        );
 
         let mut out = Vec::new();
         for row in result {
@@ -188,7 +190,7 @@ impl Driver for MySqlDriver {
             // Row::unwrap() 给出 Vec<Value>，顺序与列一致
             let vals: Vec<rsbatis_core::Value> =
                 r.unwrap().into_iter().map(from_mysql_value).collect();
-            out.push(Row::new(names.clone(), vals));
+            out.push(Row::from_shared(std::sync::Arc::clone(&names), vals));
         }
         Ok(out)
     }
