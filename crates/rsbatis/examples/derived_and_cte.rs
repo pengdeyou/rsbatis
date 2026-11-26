@@ -49,7 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Expr::lit(30_i32),
         ));
 
-    let sql = outer.build(db.dialect());
+    let sql = db.explain(&outer);
     println!("派生表 SQL:\n  {}\n", sql.text);
     let rows = db.fetch_all::<NameOnly>(&sql)?;
     println!(
@@ -63,7 +63,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Expr::Col("t", "age"),
         Expr::lit(40_i32),
     ));
-    let sql = cte_stmt.build(db.dialect());
+    let sql = db.explain(&cte_stmt);
     println!("CTE SQL:\n  {}\n", sql.text);
     let rows = db.fetch_all::<NameOnly>(&sql)?;
     println!(
@@ -87,7 +87,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Expr::Col("o", "user_id"),
         ),
     );
-    let sql = joined.build(db.dialect());
+    let sql = db.explain(&joined);
     println!("JOIN 派生表 SQL:\n  {}\n", sql.text);
     let rows = db.fetch_all::<NameOnly>(&sql)?;
     println!(

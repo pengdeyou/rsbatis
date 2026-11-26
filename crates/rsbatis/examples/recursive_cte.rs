@@ -38,12 +38,12 @@ fn main() {
         .column("n")
         .recursive_cte("nums", &base, &step)
         .order_by(Expr::bare_col("n"), SortOrder::Asc);
-    println!("1) 数字序列 1..5\nSQL: {}\n", nums.build(db.dialect()).text);
+    println!("1) 数字序列 1..5\nSQL: {}\n", db.explain(&nums).text);
     #[derive(FromRow, Debug)]
     struct N {
         n: i64,
     }
-    let rows: Vec<N> = db.fetch_all(nums.build(db.dialect())).unwrap();
+    let rows: Vec<N> = db.fetch_all(&nums).unwrap();
     println!(
         "   n = {:?}\n",
         rows.into_iter().map(|r| r.n).collect::<Vec<_>>()
@@ -78,14 +78,14 @@ fn main() {
         .column("name")
         .recursive_cte("d", &base, &step)
         .order_by(Expr::col("d", "id"), SortOrder::Asc);
-    println!("2) 组织树展开\nSQL: {}\n", tree.build(db.dialect()).text);
+    println!("2) 组织树展开\nSQL: {}\n", db.explain(&tree).text);
 
     #[derive(FromRow, Debug)]
     struct Named {
         id: i64,
         name: String,
     }
-    for r in db.fetch_all::<Named>(tree.build(db.dialect())).unwrap() {
+    for r in db.fetch_all::<Named>(&tree).unwrap() {
         println!("   #{} {}", r.id, r.name);
     }
 }

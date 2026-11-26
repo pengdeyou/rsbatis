@@ -24,6 +24,24 @@ pub struct Session<D: Driver> {
     in_tx: bool,
 }
 
+/// 主键值为 0 时换成 `Entity::next_id()` 生成的值。
+///
+/// 只在 0 上动手，因为 0 不是合法的雪花 id（时间戳部分不为 0）。其余值原样保留——
+/// 拿到一个真实主键就当它已经是最终值，不"纠正"用户的数据。
+fn fill_generated_pk<E: rsbatis_core::Entity>(cols: &mut [(&'static str, rsbatis_core::Value)]) {
+    let Some(pk) = E::PRIMARY_KEY.first() else {
+        return;
+    };
+    let Some(id) = E::next_id() else {
+        return;
+    };
+    for (name, value) in cols.iter_mut() {
+        if *name == *pk && matches!(value, rsbatis_core::Value::I64(0)) {
+            *value = rsbatis_core::Value::I64(id);
+        }
+    }
+}
+
 impl<D: Driver> Session<D> {
     pub fn new(driver: D) -> Self {
         Self {
@@ -47,6 +65,14 @@ impl<D: Driver> Session<D> {
 
     pub fn dialect(&self) -> Dialect {
         self.driver.dialect()
+    }
+
+    /// 渲染成 SQL 文本，不消耗语句、不执行。
+    ///
+    /// 想打印/记录/断言生成的 SQL 时用它；`build(Dialect)` 是同一件事的显式版本，
+    /// 差别只在方言从哪来——这里取的是初始化时驱动定下的那个。
+    pub fn explain(&self, stmt: &impl ToSql) -> rsbatis_core::Sql {
+        stmt.to_sql(self.dialect())
     }
 
     pub fn in_transaction(&self) -> bool {
@@ -75,6 +101,7 @@ impl<D: Driver> Session<D> {
     pub fn add<E: rsbatis_core::Entity>(&mut self, model: &E) -> Result<usize, DriverError> {
         let mut cols: Vec<(&'static str, rsbatis_core::Value)> = Vec::new();
         model.column_values(&mut cols);
+        fill_generated_pk::<E>(&mut cols);
         if cols.is_empty() {
             return Err(DriverError::new(
                 ErrorKind::Other,
@@ -106,6 +133,7 @@ impl<D: Driver> Session<D> {
     pub fn insert<E: rsbatis_core::Entity>(&mut self, model: &E) -> Result<i64, DriverError> {
         let mut cols: Vec<(&'static str, rsbatis_core::Value)> = Vec::new();
         model.column_values(&mut cols);
+        fill_generated_pk::<E>(&mut cols);
         if cols.is_empty() {
             return Err(DriverError::new(
                 ErrorKind::Other,
@@ -251,6 +279,7 @@ impl<D: Driver> Session<D> {
 
         let mut cols: Vec<(&'static str, rsbatis_core::Value)> = Vec::new();
         model.column_values(&mut cols);
+        fill_generated_pk::<E>(&mut cols);
         if cols.is_empty() {
             return Err(DriverError::new(
                 ErrorKind::Other,
@@ -363,6 +392,11 @@ pub struct Transaction<'a, D: Driver> {
 }
 
 impl<'a, D: Driver> Transaction<'a, D> {
+    /// 事务内的 `explain`（只会渲染，不参与事务）。
+    pub fn explain(&self, stmt: &impl ToSql) -> rsbatis_core::Sql {
+        self.session.explain(stmt)
+    }
+
     pub fn execute(&mut self, stmt: impl ToSql) -> Result<usize, DriverError> {
         self.session.execute(stmt)
     }

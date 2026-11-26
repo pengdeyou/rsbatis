@@ -14,7 +14,7 @@ struct User {
 
 fn dump(db: &mut Session<SqliteDriver>) -> Vec<String> {
     let mut rows: Vec<User> = db
-        .fetch_all(SelectStmt::for_entity::<User>().build(db.dialect()))
+        .fetch_all(&SelectStmt::for_entity::<User>())
         .unwrap();
     rows.sort_by_key(|u| u.id);
     rows.into_iter()
@@ -34,14 +34,14 @@ fn main() {
 
     // 把李四的年龄改成 30（单行更新），其余人不动
     let stmt = update!(User { age: 30 } where User.name == "李四");
-    let sql = stmt.build(db.dialect());
+    let sql = db.explain(&stmt);
     println!("\nSQL: {}\n参数: {:?}", sql.text, sql.params);
     db.execute(sql).unwrap();
     println!("\nupdate! 之后：\n{}", dump(&mut db).join("\n"));
 
     // 删掉未成年人
     let stmt = delete!(User where User.age < 18);
-    println!("\nSQL: {}", stmt.build(db.dialect()).text);
-    db.execute(stmt.build(db.dialect())).unwrap();
+    println!("\nSQL: {}", db.explain(&stmt).text);
+    db.execute(&stmt).unwrap();
     println!("\ndelete! 之后：\n{}", dump(&mut db).join("\n"));
 }

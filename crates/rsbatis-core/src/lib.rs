@@ -79,6 +79,15 @@ pub trait Entity {
     /// `Option<T>` 字段为 `None` 时**不收集该列**——语义是"这一列交给数据库默认值/可空性"，
     /// 而不是写一个 NULL。显式写 NULL 走 `InsertStmt::set_null`。
     fn column_values(&self, _out: &mut Vec<(&'static str, crate::Value)>) {}
+
+    /// 主键由应用侧生成时返回一个新值；默认 `None`（交给数据库自增或由调用方给值）。
+    ///
+    /// `#[derive(Entity)]` 在字段标注 `#[rsbatis(primary_key, snowflake)]` 时实现它。
+    /// 这里的约定是：**插入时看到主键值为 0 就换成新生成的 id**。0 不是合法的雪花 id
+    /// （时间戳部分不可能为 0），所以"0 表示没给"是安全的。
+    fn next_id() -> Option<i64> {
+        None
+    }
 }
 
 /// 任何能产出一条 `Sql` 的东西。

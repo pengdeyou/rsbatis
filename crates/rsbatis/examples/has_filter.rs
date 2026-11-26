@@ -50,8 +50,8 @@ fn main() {
         .column("name")
         .and_filter(rel.exists_filter(Author::id()))
         .order_by(Expr::bare_col("name"), SortOrder::Asc);
-    println!("SQL: {}", stmt.build(db.dialect()).text);
-    let rows: Vec<NameRow> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    println!("SQL: {}", db.explain(&stmt).text);
+    let rows: Vec<NameRow> = db.fetch_all(&stmt).unwrap();
     println!("有文章的作者: {:?}\n", rows.iter().map(|r| r.name.as_str()).collect::<Vec<_>>());
 
     // 2) 一篇都没写的作者
@@ -59,7 +59,7 @@ fn main() {
         .column("name")
         .and_filter(rel.not_exists_filter(Author::id()))
         .order_by(Expr::bare_col("name"), SortOrder::Asc);
-    let rows: Vec<NameRow> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<NameRow> = db.fetch_all(&stmt).unwrap();
     println!("一篇文章都没有: {:?}\n", rows.iter().map(|r| r.name.as_str()).collect::<Vec<_>>());
 
     // 3) 只算"已发布"：给子查询叠加条件
@@ -73,8 +73,8 @@ fn main() {
         .column("name")
         .and_filter(Expr::exists(&sub))
         .order_by(Expr::bare_col("name"), SortOrder::Asc);
-    println!("SQL: {}", stmt.build(db.dialect()).text);
-    let rows: Vec<NameRow> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    println!("SQL: {}", db.explain(&stmt).text);
+    let rows: Vec<NameRow> = db.fetch_all(&stmt).unwrap();
     println!("有已发布文章的作者: {:?}", rows.iter().map(|r| r.name.as_str()).collect::<Vec<_>>());
     println!("（小李那篇 b1 已发布、老王的 a1 已发布，两人都命中）");
 }

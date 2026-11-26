@@ -43,8 +43,8 @@ fn main() {
                 )
                 .as_("rn"),
         );
-    println!("1) 分区排名\nSQL: {}\n", stmt.build(db.dialect()).text);
-    let rows: Vec<Ranked> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    println!("1) 分区排名\nSQL: {}\n", db.explain(&stmt).text);
+    let rows: Vec<Ranked> = db.fetch_all(&stmt).unwrap();
     for r in rows {
         println!("   user={} amount={} rn={}", r.user_id, r.amount, r.rn);
     }
@@ -68,13 +68,13 @@ fn main() {
         .and_filter(Expr::cmp(BinOp::Le, Expr::col("t", "rn"), Expr::lit(2_i64)))
         .order_by(Expr::col("t", "user_id"), SortOrder::Asc)
         .order_by(Expr::col("t", "amount"), SortOrder::Desc);
-    println!("\n2) 每组 Top-2\nSQL: {}\n", outer.build(db.dialect()).text);
+    println!("\n2) 每组 Top-2\nSQL: {}\n", db.explain(&outer).text);
     #[derive(FromRow, Debug)]
     struct Top {
         user_id: i64,
         amount: i64,
     }
-    for r in db.fetch_all::<Top>(outer.build(db.dialect())).unwrap() {
+    for r in db.fetch_all::<Top>(&outer).unwrap() {
         println!("   user={} amount={}", r.user_id, r.amount);
     }
 
@@ -95,14 +95,14 @@ fn main() {
                 .as_("running"),
         )
         .order_by(Expr::col("sales", "id"), SortOrder::Asc);
-    println!("\n3) 累积和\nSQL: {}\n", stmt.build(db.dialect()).text);
+    println!("\n3) 累积和\nSQL: {}\n", db.explain(&stmt).text);
     #[derive(FromRow, Debug)]
     struct Run {
         user_id: i64,
         amount: i64,
         running: i64,
     }
-    for r in db.fetch_all::<Run>(stmt.build(db.dialect())).unwrap() {
+    for r in db.fetch_all::<Run>(&stmt).unwrap() {
         println!(
             "   user={} amount={} running={}",
             r.user_id, r.amount, r.running

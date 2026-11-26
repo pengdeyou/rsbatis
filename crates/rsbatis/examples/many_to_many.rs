@@ -51,11 +51,10 @@ fn main() {
 
     let students: Vec<Student> = db
         .fetch_all(
-            SelectStmt::new("student")
+            &SelectStmt::new("student")
                 .column("id")
                 .column("name")
-                .order_by(rsbatis::Expr::bare_col("id"), SortOrder::Asc)
-                .build(db.dialect()),
+                .order_by(rsbatis::Expr::bare_col("id"), SortOrder::Asc),
         )
         .unwrap();
 
@@ -78,8 +77,7 @@ fn main() {
             SelectStmt::new("course")
                 .column("id")
                 .column("title")
-                .order_by(rsbatis::Expr::bare_col("id"), SortOrder::Asc)
-                .build(db.dialect()),
+                .order_by(rsbatis::Expr::bare_col("id"), SortOrder::Asc),
         )
         .unwrap();
     let enrolled = db.load_many_to_many(&rev, &courses, |c| c.id).unwrap();

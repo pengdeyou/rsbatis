@@ -50,7 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .filter(Column::<i64>::new("orders", "amount").ge(100_i64));
 
     let stmt = SelectStmt::for_entity::<User>().filter(User::id().in_subquery(&big_buyers));
-    let sql = stmt.build(db.dialect());
+    let sql = db.explain(&stmt);
     println!("IN 子查询 SQL:\n  {}\n", sql.text);
     let users: Vec<User> = db.fetch_all(&sql)?;
     println!(
@@ -60,7 +60,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ── 2. NOT IN：没买过大额的（含从没下过单的人）──
     let stmt = SelectStmt::for_entity::<User>().filter(User::id().not_in_subquery(&big_buyers));
-    let users: Vec<User> = db.fetch_all(stmt.build(db.dialect()))?;
+    let users: Vec<User> = db.fetch_all(&stmt)?;
     println!(
         "NOT IN 结果: {:?}\n",
         users.iter().map(|u| &u.name).collect::<Vec<_>>()
@@ -81,7 +81,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let stmt = SelectStmt::for_entity::<User>()
         .filter(Column::<i32>::new("users", "age").ge(20_i32))
         .and_filter(Expr::exists(&exists_sub));
-    let sql = stmt.build(db.dialect());
+    let sql = db.explain(&stmt);
     println!("EXISTS SQL:\n  {}\n", sql.text);
     let users: Vec<User> = db.fetch_all(&sql)?;
     println!(

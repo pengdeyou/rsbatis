@@ -22,10 +22,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for (name, age) in [("张三", 20), ("李四", 17), ("王五", 30)] {
         db.execute(
-            insert::<User>()
+            &insert::<User>()
                 .set(User::name(), name)
                 .set(User::age(), age)
-                .build(Dialect::Sqlite),
+                ,
         )?;
     }
 

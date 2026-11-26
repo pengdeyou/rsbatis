@@ -442,6 +442,7 @@ fn expand_entity(ast: &DeriveInput) -> syn::Result<TokenStream2> {
         }
     };
 
+    let mut snowflake_field = false;
     let mut col_names: Vec<String> = Vec::new();
     let mut null_names: Vec<String> = Vec::new();
     let mut pk_names: Vec<String> = Vec::new();
@@ -474,7 +475,22 @@ fn expand_entity(ast: &DeriveInput) -> syn::Result<TokenStream2> {
             ));
         }
 
-        let (col, is_pk) = field_attrs(f, ident)?;
+        let (col, is_pk, snowflake) = field_attrs(f, ident)?;
+        if snowflake {
+            if !is_pk {
+                return Err(syn::Error::new(
+                    ident.span(),
+                    "rsbatis: `snowflake` 只对主键生效，请和 `primary_key` 写在同一个字段上",
+                ));
+            }
+            if !nullable_false_ok(&f.ty) {
+                return Err(syn::Error::new(
+                    ident.span(),
+                    "rsbatis: `snowflake` 主键必须是 `i64`（不是 `Option<i64>`）：id 在插入前就已知，不存在「未给」",
+                ));
+            }
+            snowflake_field = true;
+        }
         let (inner, is_nullable) = map_field_type(&f.ty)?;
 
         let col_lit = LitStr::new(&col, ident.span());
@@ -539,6 +555,16 @@ fn expand_entity(ast: &DeriveInput) -> syn::Result<TokenStream2> {
         .map(|c| LitStr::new(c, ast.ident.span()))
         .collect();
 
+    let next_id_fn = if snowflake_field {
+        quote! {
+            fn next_id() -> ::std::option::Option<i64> {
+                #krate::Snowflake::global().next().ok()
+            }
+        }
+    } else {
+        quote! {}
+    };
+
     let name = &ast.ident;
     let (impl_g, ty_g, filterc) = ast.generics.split_for_impl();
 
@@ -555,6 +581,7 @@ fn expand_entity(ast: &DeriveInput) -> syn::Result<TokenStream2> {
             ) {
                 #(#value_pushes)*
             }
+            #next_id_fn
         }
 
         impl #impl_g #name #ty_g #filterc {
@@ -594,9 +621,17 @@ fn field_column(f: &Field, ident: &syn::Ident) -> syn::Result<String> {
 }
 
 /// 字段级属性：`(列名, 是否主键)`。
-fn field_attrs(f: &Field, ident: &syn::Ident) -> syn::Result<(String, bool)> {
+
+/// `snowflake` 主键要求字段类型就是 `i64`：`Option<i64>` 语义上是"可以不给"，
+/// 而雪花 id 在写库前就已经有值，不需要那个空态。
+fn nullable_false_ok(ty: &Type) -> bool {
+    matches!(ty, Type::Path(p) if p.path.is_ident("i64"))
+}
+
+fn field_attrs(f: &Field, ident: &syn::Ident) -> syn::Result<(String, bool, bool)> {
     let mut col: Option<String> = None;
     let mut is_pk = false;
+    let mut snowflake = false;
     for attr in &f.attrs {
         if !attr.path().is_ident("rsbatis") {
             continue;
@@ -609,14 +644,17 @@ fn field_attrs(f: &Field, ident: &syn::Ident) -> syn::Result<(String, bool)> {
             } else if meta.path.is_ident("primary_key") {
                 is_pk = true;
                 Ok(())
+            } else if meta.path.is_ident("snowflake") {
+                snowflake = true;
+                Ok(())
             } else {
                 Err(meta.error(
-                    "rsbatis: 字段级属性只支持 `column = \"...\"` 与 `primary_key`；若想忽略该字段请删除字段",
+                    "rsbatis: 字段级属性只支持 `column = \"...\"`、`primary_key` 与 `snowflake`；若想忽略该字段请删除字段",
                 ))
             }
         })?;
     }
-    Ok((col.unwrap_or_else(|| ident.to_string()), is_pk))
+    Ok((col.unwrap_or_else(|| ident.to_string()), is_pk, snowflake))
 }
 
 /// 字段类型 → (用作 Column 类型参数的类型, 是否可空)。

@@ -65,12 +65,11 @@ fn main() {
 
     let staff: Vec<Staff> = db
         .fetch_all(
-            SelectStmt::new("staff")
+            &SelectStmt::new("staff")
                 .column("id")
                 .column("dept_id")
                 .column("name")
-                .order_by(rsbatis::Expr::bare_col("id"), SortOrder::Asc)
-                .build(db.dialect()),
+                .order_by(rsbatis::Expr::bare_col("id"), SortOrder::Asc),
         )
         .unwrap();
     for s in &staff {
@@ -90,8 +89,7 @@ fn main() {
     let dept_count: i64 = db
         .fetch_one(
             SelectStmt::new("dept")
-                .column_expr(rsbatis::Expr::count_star())
-                .build(db.dialect()),
+                .column_expr(rsbatis::Expr::count_star()),
         )
         .unwrap()
         .unwrap()

@@ -18,7 +18,7 @@ use rsbatis::{
 #[derive(Entity, FromRow, Clone, Debug)]
 #[rsbatis(table = "events")]
 pub struct Event {
-    #[rsbatis(primary_key)]
+    #[rsbatis(primary_key, snowflake)]
     pub id: i64,
     pub name: String,
 }
@@ -143,31 +143,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 方式 B：语句式（可写 NULL、可加 ON CONFLICT）
     db.execute(
-        insert::<User>()
+        &insert::<User>()
             .set(User::name(), "孙八")
             .set_null(User::age())
-            .build(Dialect::Sqlite),
+            ,
     )?;
 
     // ---------- 6. 更新（按主键） ----------
     db.execute(
-        update::<User>()
+        &update::<User>()
             .set(User::age(), 21)
             .filter(filter!(User.id == 1))
-            .build(Dialect::Sqlite),
+            ,
     )?;
 
     // ---------- 7. 更新（按条件，命中多行） ----------
     let affected = db.execute(
-        update::<User>()
+        &update::<User>()
             .set(User::age(), 18)
             .filter(filter!(User.age < 18))
-            .build(Dialect::Sqlite),
+            ,
     )?;
     assert!(affected >= 1);
 
     // ---------- 8. 删除 ----------
-    db.execute(delete::<User>().filter(filter!(User.id == 4)).build(Dialect::Sqlite))?;
+    db.execute(&delete::<User>().filter(filter!(User.id == 4)))?;
     // 按条件删除同理：delete::<User>().filter(filter!(User.age < 0))
 
     // ---------- 9. 一对一 ----------
@@ -221,20 +221,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(left.len(), 4);
 
     // ---------- 14. 雪花 id 主键 ----------
-    // id 在 INSERT 之前就是确定值：主键写成 i64（不是 Option），也不需要 RETURNING
-    let sf = Snowflake::global();
-    let e1 = Event { id: sf.next()?, name: "created".into() };
-    let e2 = Event { id: sf.next()?, name: "updated".into() };
-    assert!(e2.id > e1.id);
-    db.add(&e1)?;
-    db.add(&e2)?;
+    // 实体上声明一次 `snowflake`：插入时看到 id = 0 就换成新生成的值，
+    // 返回值就是落库的那个 id。0 不是合法雪花 id，所以"0 = 没给"是安全的。
+    let id1 = db.insert(&Event { id: 0, name: "created".into() })?;
+    let id2 = db.insert(&Event { id: 0, name: "updated".into() })?;
+    assert!(id2 > id1);
 
-    let e2_id = e2.id; // select! 里只能引用实体列，取到本地变量再比较
     let back: Event = db
-        .fetch_one_as(&select! { Event where Event.id == e2_id })?
+        .fetch_one_as(&select! { Event where Event.id == id2 })?
         .expect("刚插入的行应该查得到");
     assert_eq!(back.name, "updated");
-    assert_eq!(Snowflake::parse(e2.id).1, sf.node()); // 节点 id 就在 id 里
+    assert_eq!(Snowflake::parse(id2).1, Snowflake::global().node()); // 节点 id 就在 id 里
 
     println!("all queries OK");
     Ok(())

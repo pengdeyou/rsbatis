@@ -44,7 +44,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .group_by(Expr::Col("orders", "user_id"))
         .order_by(Expr::Col("orders", "user_id"), SortOrder::Asc);
 
-    let sql = stmt.build(db.dialect());
+    let sql = db.explain(&stmt);
     println!("分组统计 SQL:\n  {}\n", sql.text);
     let rows: Vec<UserStats> = db.fetch_all(sql)?;
     println!("  → 每组: {:?}\n", rows);
@@ -56,7 +56,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .group_by(Expr::Col("orders", "user_id"))
         .having(Expr::cmp(BinOp::Gt, Expr::count_star(), Expr::lit(1_i64)));
 
-    let sql = stmt.build(db.dialect());
+    let sql = db.explain(&stmt);
     println!("带 HAVING 的 SQL:\n  {}\n", sql.text);
     let rows: Vec<UserCount> = db.fetch_all(sql)?;
     println!("  → 下单 >= 2: {:?}\n", rows);
@@ -77,7 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .group_by(Expr::Col("users", "name"))
         .order_by(Expr::Col("users", "name"), SortOrder::Asc);
 
-    let sql = stmt.build(db.dialect());
+    let sql = db.explain(&stmt);
     println!("联表分组 SQL:\n  {}\n", sql.text);
     let rows: Vec<NameOrders> = db.fetch_all(sql)?;
     println!(
