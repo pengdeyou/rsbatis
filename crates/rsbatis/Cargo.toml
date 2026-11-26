@@ -5,6 +5,8 @@ edition = "2021"
 rust-version = "1.80"
 description = "A SQLAlchemy-style ORM for Rust: write select! { User where User.age >= 18 } instead of filter(Column::Age.gte(18))."
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/pengdeyou/rsbatis"
+homepage = "https://github.com/pengdeyou/rsbatis"
 keywords = ["orm", "sql", "sqlalchemy", "database", "sqlite"]
 categories = ["database"]
 readme = "README.md"
