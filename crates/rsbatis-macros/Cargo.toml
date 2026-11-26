@@ -18,6 +18,10 @@ proc-macro = true
 [dependencies]
 # derive(Entity) 需要完整语法树解析（泛型、属性、路径类型），
 # 手写 TokenTree 扫描器撑不住；这与 serde/serde_derive 的依赖结构一致。
-syn = { version = "2", features = ["derive", "parsing", "printing", "proc-macro"] }
+# `full` 不是可选项：`where_!`/`select!` 要重写任意表达式，而数组字面量、闭包、
+# 方法调用链都在 `full` 里。缺了它，用户写 `User.name.in_(["a", "b"])` 会得到
+# "unsupported expression; enable syn's features=["full"]"——报错指向用户的代码，
+# 真正缺 feature 的是这里。
+syn = { version = "2", features = ["full", "derive", "parsing", "printing", "proc-macro"] }
 quote = "1"
 proc-macro2 = "1"
