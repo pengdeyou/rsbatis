@@ -7,7 +7,6 @@ members = [
     "crates/rsbatis-driver",
     "crates/rsbatis-orm",
     "crates/rsbatis-migrate",
-    "crates/rsboot",
     "crates/rsbatis-cli",
     # 上游 mysql 的 fork：只换底层 socket，协议逻辑保持上游原样
     "vendor/mysql",
