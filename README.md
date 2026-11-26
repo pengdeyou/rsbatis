@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/rsbatis-logo.svg" alt="rsbatis" width="200">
+</p>
+
 # rsbatis
 
 A SQLAlchemy-style ORM for Rust — `select! { User where User.age >= 18 }` instead of
@@ -54,6 +58,13 @@ pub struct User {
 the second feeds `fetch_all` / `fetch_one_as` / `paginate`.
 
 ## Queries
+
+The dialect is a property of the connection, not of the statement: `Session` reads it from the
+driver it was opened with, so `db.execute(stmt)` / `db.fetch_all(stmt)` render on their own and you
+never pass `Dialect` at a call site. `stmt.build(Dialect)` is still there for the one case that
+needs it — you want the SQL *text* (printing, logging, a migration file, an assertion). For that,
+`db.explain(&stmt)` renders using the connection's dialect without consuming the statement, so the
+same statement can be explained and then executed.
 
 Every snippet below is a line of [`examples/queries.rs`](crates/rsbatis/examples/queries.rs), which
 runs in CI. If the README and the example disagree, the example is what actually compiles.
@@ -121,10 +132,9 @@ let id: i64 = db.insert(&Log { id: None, msg: "started".into() })?;
 
 // statement form: write NULL explicitly, or add ON CONFLICT
 db.execute(
-    insert::<User>()
+    &insert::<User>()
         .set(User::name(), "孙八")
-        .set_null(User::age())
-        .build(Dialect::Sqlite),
+        .set_null(User::age()),
 )?;
 ```
 
@@ -140,18 +150,18 @@ silently returns a stale id fails loudly instead of handing back a plausible-loo
 ```rust
 // by primary key
 db.execute(
-    update::<User>()
+    &update::<User>()
         .set(User::age(), 21)
         .filter(filter!(User.id == 1))
-        .build(Dialect::Sqlite),
+        ,
 )?;
 
 // by condition, hitting several rows — the return value is the affected count
 let affected = db.execute(
-    update::<User>()
+    &update::<User>()
         .set(User::age(), 18)
         .filter(filter!(User.age < 18))
-        .build(Dialect::Sqlite),
+        ,
 )?;
 ```
 
@@ -163,7 +173,7 @@ duplicate.
 ### Delete
 
 ```rust
-db.execute(delete::<User>().filter(filter!(User.id == 4)).build(Dialect::Sqlite))?;
+db.execute(&delete::<User>().filter(filter!(User.id == 4)))?;
 // by condition: delete::<User>().filter(filter!(User.age < 0))
 ```
 
@@ -273,6 +283,27 @@ time-ordered, which keeps B-tree inserts at the right edge of the index.
 
 41 bits of milliseconds last until 2109, 10 bits give 1024 instances, 12 bits give
 4096 ids per millisecond per instance (~4.1M/s single node).
+
+Declare it once on the entity, and the id is filled at insert time:
+
+```rust
+#[derive(Entity, FromRow, Clone, Debug)]
+#[rsbatis(table = "events")]
+pub struct Event {
+    #[rsbatis(primary_key, snowflake)]
+    pub id: i64,          // plain i64, not Option<i64>
+    pub name: String,
+}
+
+let id: i64 = db.insert(&Event { id: 0, name: "created".into() })?;  // 0 means "generate"
+```
+
+`id = 0` is the "not given" marker: 0 is not a valid snowflake id (the timestamp bits are
+never zero), so a real key and a "please generate one" request cannot be confused. A non-zero
+key is written as-is — importing rows from another system keeps its ids intact.
+
+You can still call `Snowflake::global()` directly when you need the id *before* the insert
+(building a batch, referencing it in a second table within the same transaction):
 
 ```rust
 let sf = Snowflake::global();          // node id: RSBATIS_NODE_ID, else hostname+pid hash
