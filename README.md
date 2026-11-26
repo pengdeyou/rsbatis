@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/rsbatis-logo.svg" alt="rsbatis" width="200">
+</p>
+
 # rsbatis
 
 A SQLAlchemy-style ORM for Rust — `select! { User where User.age >= 18 }` instead of
