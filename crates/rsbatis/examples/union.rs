@@ -31,7 +31,7 @@ fn main() {
     struct Amount {
         amount: i64,
     }
-    let rows: Vec<Amount> = db.fetch_all(&all).unwrap();
+    let rows: Vec<Amount> = db.all(&all).unwrap();
     println!("   行数 = {}（2 + 3）", rows.len());
 
     // 2) UNION：金额去重 —— 两个渠道都有 100，只算一次
@@ -40,13 +40,13 @@ fn main() {
         "2) UNION（去重）\nSQL: {}\n",
         db.explain(&distinct).text
     );
-    let rows: Vec<Amount> = db.fetch_all(&distinct).unwrap();
+    let rows: Vec<Amount> = db.all(&distinct).unwrap();
     println!("   行数 = {}（100 被合并）", rows.len());
 
     // 3) 复合查询的总数：count 必须包一层，否则算出来的是"每段各一行"
     let count = all.build_count(db.dialect());
     println!("3) 总数\nSQL: {}\n", count.text);
-    let total: i64 = db.fetch_one(count).unwrap().unwrap().get::<i64>(0).unwrap();
+    let total: i64 = db.first(count).unwrap().unwrap().get::<i64>(0).unwrap();
     println!("   total = {total}");
 
     // 4) 合并后统一过滤 + 排序 + 截断
@@ -63,7 +63,7 @@ fn main() {
         .order_by(Expr::col("t", "amount"), SortOrder::Desc)
         .limit(2);
     println!("4) 合并后取前二\nSQL: {}\n", db.explain(&top).text);
-    let rows: Vec<Amount> = db.fetch_all(&top).unwrap();
+    let rows: Vec<Amount> = db.all(&top).unwrap();
     for r in rows {
         println!("   amount = {}", r.amount);
     }

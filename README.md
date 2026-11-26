@@ -55,12 +55,12 @@ pub struct User {
 
 `Entity` generates the column accessors (`User::id()`, `User::name()`, …).
 `FromRow` generates the row decoder. Both are needed: the first feeds `filter!` and the builders,
-the second feeds `fetch_all` / `fetch_one_as` / `paginate`.
+the second feeds `all` / `one` / `paginate`.
 
 ## Queries
 
 The dialect is a property of the connection, not of the statement: `Session` reads it from the
-driver it was opened with, so `db.execute(stmt)` / `db.fetch_all(stmt)` render on their own and you
+driver it was opened with, so `db.execute(stmt)` / `db.all(stmt)` render on their own and you
 never pass `Dialect` at a call site. `stmt.build(Dialect)` is still there for the one case that
 needs it — you want the SQL *text* (printing, logging, a migration file, an assertion). For that,
 `db.explain(&stmt)` renders using the connection's dialect without consuming the statement, so the
@@ -72,16 +72,16 @@ runs in CI. If the README and the example disagree, the example is what actually
 ### Fetch one by primary key
 
 ```rust
-let one: Option<User> = db.fetch_one_as(&select! { User where User.id == 1 })?;
+let one: Option<User> = db.one(&select! { User where User.id == 1 })?;
 ```
 
-`Option`, not `Result`: a missing row is `None`, not an error. Use `fetch_one_as` when you need
-the typed model, `fetch_one` when you want the raw `Row`.
+`Option`, not `Result`: a missing row is `None`, not an error. Use `one` when you need
+the typed model, `first` when you want the raw `Row`.
 
 ### Fetch a list
 
 ```rust
-let all: Vec<User> = db.fetch_all(&select! { User order_by User.id asc })?;
+let all: Vec<User> = db.all(&select! { User order_by User.id asc })?;
 ```
 
 ### Pagination
@@ -100,7 +100,7 @@ when a UI walks past the last page. `Page` carries `items`, `total`, `page`, `si
 
 ```rust
 // macros: the whole query in one call
-let adults: Vec<User> = db.fetch_all(&select! {
+let adults: Vec<User> = db.all(&select! {
     User where User.age >= 18 && User.name.like("张%")
 })?;
 
@@ -120,6 +120,13 @@ misspelled column is `E0599` with rustc's own suggestion, a wrong literal type i
 Available predicates: `eq`, `ne`, `gt`, `ge`, `lt`, `le`, `like`, `not_like`, `in_`, `not_in`,
 `between`, `not_between`, `is_null`, `is_not_null`, `eq_col`, `in_subquery`, `not_in_subquery`.
 Combine with `&&` / `||` (AND / OR) and `!` (NOT).
+
+### Naming
+
+Method names are `snake_case` — this is not taste, it is the `non_snake_case` lint: `fetchAll`,
+`hasOne` or `belongTo` make `cargo clippy -- -D warnings` fail and would force an `#[allow]` on
+every such method. So the short names are the snake_case ones: `all` / `one` / `first` for
+reading, `has_many` / `has_one` / `belongs_to` / `many_to_many` for relation loading.
 
 ### Insert
 
@@ -180,7 +187,7 @@ db.execute(&delete::<User>().filter(filter!(User.id == 4)))?;
 ### Inner join
 
 ```rust
-let pairs: Vec<(User, Order)> = db.fetch_all(&select! {
+let pairs: Vec<(User, Order)> = db.all(&select! {
     User as u join Order as o on o.user_id == u.id
     where u.id == 1 order_by o.amount desc
 })?;
@@ -198,7 +205,7 @@ sides would share the prefix.
 #[rsbatis(table = "orders")]
 struct OrderOpt { id: Option<i64>, user_id: Option<i64>, amount: Option<i64> }
 
-let left: Vec<(User, OrderOpt)> = db.fetch_all(&select! {
+let left: Vec<(User, OrderOpt)> = db.all(&select! {
     User as u left_join OrderOpt as o on o.user_id == u.id
     where u.id <= 3
 })?;
@@ -218,7 +225,7 @@ promised in prose.
 
 ```rust
 let rel = HasMany::new(Order::user_id(), |o: &Order| o.user_id);
-let per_user: Vec<Vec<Order>> = db.load_has_many(&rel, &users, |u| u.id)?;
+let per_user: Vec<Vec<Order>> = db.has_many(&rel, &users, |u| u.id)?;
 ```
 
 Parents with no children get an empty `Vec`, not an error.
@@ -227,20 +234,20 @@ Parents with no children get an empty `Vec`, not an error.
 
 ```rust
 let rel = BelongsTo::new(Order::user_id(), User::id(), |u: &User| u.id);
-let authors: Vec<Option<User>> = db.load_belongs_to(&rel, &orders, |o| o.user_id)?;
+let authors: Vec<Option<User>> = db.belongs_to(&rel, &orders, |o| o.user_id)?;
 ```
 
 A missing parent yields `None`; the child is never dropped and the call never panics.
 
 ### One-to-one
 
-`HasOne` returns `Option<C>` per parent. It costs the same as `load_has_many` — one `IN` query
+`HasOne` returns `Option<C>` per parent. It costs the same as `has_many` — one `IN` query
 for the whole batch — because SQL cannot `LIMIT 1` per parent in a single round trip; the
 "first one" is chosen in memory.
 
 ```rust
 let rel = HasOne::new(Order::user_id(), |o: &Order| o.user_id);
-let order_per_user: Vec<Option<Order>> = db.load_has_one(&rel, &users, |u| u.id)?;
+let order_per_user: Vec<Option<Order>> = db.has_one(&rel, &users, |u| u.id)?;
 ```
 
 It relies on the data actually being one-to-one. If a foreign key holds several rows, which
@@ -260,7 +267,7 @@ let rel = ManyToMany::new(
     Course::id(),                 // column in the child table being referenced
     |c: &Course| c.id,
 );
-let courses: Vec<Vec<Course>> = db.load_many_to_many(&rel, &students, |s| s.id)?;
+let courses: Vec<Vec<Course>> = db.many_to_many(&rel, &students, |s| s.id)?;
 ```
 
 All four columns are required on purpose. Three of them live in two different tables, so a wrong
@@ -396,7 +403,7 @@ instead of trusting the exit code.
 ## Known constraints (by design)
 
 - **No transparent lazy loading.** Rust cannot intercept field access, so loading a relation is
-  always an explicit call (`load_has_many` / `load_belongs_to`).
+  always an explicit call (`has_many` / `belongs_to`).
 - **No transparent dirty tracking.** Attribute setters do not exist; updates go through an
   explicit `Changeset`.
 - **No `sqlx` underneath.** `sqlx` binds through a generic tuple, so the parameter count must be

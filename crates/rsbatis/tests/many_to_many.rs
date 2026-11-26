@@ -60,7 +60,7 @@ fn rel() -> ManyToMany<Course> {
 }
 
 fn students(db: &mut Session<SqliteDriver>) -> Vec<Student> {
-    db.fetch_all(
+    db.all(
         rsbatis::SelectStmt::new("m2m_student")
             .column("id")
             .column("name")
@@ -74,7 +74,7 @@ fn students(db: &mut Session<SqliteDriver>) -> Vec<Student> {
 fn links_are_bucketed_per_parent_in_input_order() {
     let mut db = seeded();
     let ss = students(&mut db);
-    let got = db.load_many_to_many(&rel(), &ss, |s| s.id).unwrap();
+    let got = db.many_to_many(&rel(), &ss, |s| s.id).unwrap();
 
     assert_eq!(3, got.len());
     assert_eq!(vec![10, 11], got[0].iter().map(|c| c.id).collect::<Vec<_>>());
@@ -86,7 +86,7 @@ fn links_are_bucketed_per_parent_in_input_order() {
 fn titles_are_correctly_joined() {
     let mut db = seeded();
     let ss = students(&mut db);
-    let got = db.load_many_to_many(&rel(), &ss, |s| s.id).unwrap();
+    let got = db.many_to_many(&rel(), &ss, |s| s.id).unwrap();
     assert_eq!("Rust", got[0][0].title);
     assert_eq!("SQL", got[0][1].title);
     assert_eq!("SQL", got[1][0].title);
@@ -95,7 +95,7 @@ fn titles_are_correctly_joined() {
 #[test]
 fn empty_parent_set_makes_no_query() {
     let mut db = seeded();
-    let got = db.load_many_to_many(&rel(), &[] as &[Student], |s| s.id).unwrap();
+    let got = db.many_to_many(&rel(), &[] as &[Student], |s| s.id).unwrap();
     assert!(got.is_empty());
 }
 
@@ -105,7 +105,7 @@ fn duplicate_parent_input_still_gets_children() {
     let ss = students(&mut db);
     // 同一个父传两次：两次都必须拿到课程，不能用 remove 让第二次变空
     let twice = vec![ss[0].clone(), ss[0].clone()];
-    let got = db.load_many_to_many(&rel(), &twice, |s| s.id).unwrap();
+    let got = db.many_to_many(&rel(), &twice, |s| s.id).unwrap();
     assert_eq!(2, got.len());
     assert_eq!(2, got[0].len());
     assert_eq!(2, got[1].len(), "重复输入的那一份不该变成空集合");
@@ -115,7 +115,7 @@ fn duplicate_parent_input_still_gets_children() {
 fn parent_without_links_gets_empty_vec_not_skipped() {
     let mut db = seeded();
     let ss = students(&mut db);
-    let got = db.load_many_to_many(&rel(), &ss, |s| s.id).unwrap();
+    let got = db.many_to_many(&rel(), &ss, |s| s.id).unwrap();
     assert_eq!(3, got.len(), "没有关联的父也要占一个位置");
 }
 
@@ -126,7 +126,7 @@ fn orphan_link_to_deleted_child_is_skipped() {
     db.execute_batch("INSERT INTO m2m_enroll (student_id, course_id) VALUES (1, 99);")
         .unwrap();
     let ss = students(&mut db);
-    let got = db.load_many_to_many(&rel(), &ss, |s| s.id).unwrap();
+    let got = db.many_to_many(&rel(), &ss, |s| s.id).unwrap();
     assert_eq!(
         vec![10, 11],
         got[0].iter().map(|c| c.id).collect::<Vec<_>>(),
@@ -141,7 +141,7 @@ fn duplicate_link_yields_duplicate_child_by_design() {
     db.execute_batch("INSERT INTO m2m_enroll (student_id, course_id) VALUES (1, 10);")
         .unwrap();
     let ss = students(&mut db);
-    let got = db.load_many_to_many(&rel(), &ss, |s| s.id).unwrap();
+    let got = db.many_to_many(&rel(), &ss, |s| s.id).unwrap();
     assert_eq!(
         vec![10, 11, 10],
         got[0].iter().map(|c| c.id).collect::<Vec<_>>(),
@@ -161,14 +161,14 @@ fn reverse_direction_uses_same_descriptor_shape() {
         |s| s.id,
     );
     let courses: Vec<Course> = db
-        .fetch_all(
+        .all(
             rsbatis::SelectStmt::new("m2m_course")
                 .column("id")
                 .column("title")
                 .build(db.dialect()),
         )
         .unwrap();
-    let got = db.load_many_to_many(&rev, &courses, |c| c.id).unwrap();
+    let got = db.many_to_many(&rev, &courses, |c| c.id).unwrap();
     let mut counts: Vec<usize> = got.iter().map(|v| v.len()).collect();
     counts.sort();
     assert_eq!(vec![0, 1, 2], counts, "Rust 1 人、SQL 2 人、Go 0 人");
@@ -180,7 +180,7 @@ fn has_many_still_works_alongside() {
     let mut db = seeded();
     let ss = students(&mut db);
     let hm = HasMany::<Enroll>::new(Enroll::student_id(), |e| e.student_id);
-    let got = db.load_has_many(&hm, &ss, |s| s.id).unwrap();
+    let got = db.has_many(&hm, &ss, |s| s.id).unwrap();
     assert_eq!(vec![2, 1, 0], got.iter().map(|v| v.len()).collect::<Vec<_>>());
 }
 
@@ -196,7 +196,7 @@ fn wrong_link_column_is_rejected_instead_of_returning_empty() {
         Course::id(),
         |c| c.id,
     );
-    let err = db.load_many_to_many(&bad, &ss, |s| s.id).unwrap_err();
+    let err = db.many_to_many(&bad, &ss, |s| s.id).unwrap_err();
     assert!(
         err.message.contains("link_parent") && err.message.contains("m2m_enroll"),
         "错要指出是哪一列、应该是哪张表，got: {}",
@@ -216,6 +216,6 @@ fn wrong_child_column_is_rejected() {
         Enroll::course_id(),
         |c| c.id,
     );
-    let err = db.load_many_to_many(&bad, &ss, |s| s.id).unwrap_err();
+    let err = db.many_to_many(&bad, &ss, |s| s.id).unwrap_err();
     assert!(err.message.contains("child_col"), "got: {}", err.message);
 }

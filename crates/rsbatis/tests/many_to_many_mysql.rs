@@ -55,7 +55,7 @@ fn many_to_many_on_mariadb() {
     };
     let rel = ManyToMany::<C>::new("m2m_e", E::s_id(), E::c_id(), C::id(), |c| c.id);
     let ss: Vec<S> = db
-        .fetch_all(
+        .all(
             SelectStmt::new("m2m_s")
                 .column("id")
                 .column("name")
@@ -63,7 +63,7 @@ fn many_to_many_on_mariadb() {
                 .build(db.dialect()),
         )
         .unwrap();
-    let got = db.load_many_to_many(&rel, &ss, |s| s.id).unwrap();
+    let got = db.many_to_many(&rel, &ss, |s| s.id).unwrap();
     assert_eq!(3, got.len());
     assert_eq!(vec![10, 11], got[0].iter().map(|c| c.id).collect::<Vec<_>>());
     assert_eq!(vec![11], got[1].iter().map(|c| c.id).collect::<Vec<_>>());
@@ -80,9 +80,9 @@ fn orphan_link_skipped_on_mariadb() {
         .unwrap();
     let rel = ManyToMany::<C>::new("m2m_e", E::s_id(), E::c_id(), C::id(), |c| c.id);
     let ss: Vec<S> = db
-        .fetch_all(SelectStmt::new("m2m_s").column("id").column("name").build(db.dialect()))
+        .all(SelectStmt::new("m2m_s").column("id").column("name").build(db.dialect()))
         .unwrap();
-    let got = db.load_many_to_many(&rel, &ss, |s| s.id).unwrap();
+    let got = db.many_to_many(&rel, &ss, |s| s.id).unwrap();
     // 子集合里按 id 找 99 不存在 → 跳过，不 panic
     assert!(got.iter().flatten().all(|c| c.id != 99));
 }

@@ -50,7 +50,7 @@ fn main() {
     );
 
     let students: Vec<Student> = db
-        .fetch_all(
+        .all(
             &SelectStmt::new("student")
                 .column("id")
                 .column("name")
@@ -58,7 +58,7 @@ fn main() {
         )
         .unwrap();
 
-    let courses = db.load_many_to_many(&rel, &students, |s| s.id).unwrap();
+    let courses = db.many_to_many(&rel, &students, |s| s.id).unwrap();
     for (s, cs) in students.iter().zip(courses.iter()) {
         let titles: Vec<&str> = cs.iter().map(|c| c.title.as_str()).collect();
         println!("{} 选了 {:?}", s.name, titles);
@@ -73,14 +73,14 @@ fn main() {
         |s| s.id,
     );
     let courses: Vec<Course> = db
-        .fetch_all(
+        .all(
             SelectStmt::new("course")
                 .column("id")
                 .column("title")
                 .order_by(rsbatis::Expr::bare_col("id"), SortOrder::Asc),
         )
         .unwrap();
-    let enrolled = db.load_many_to_many(&rev, &courses, |c| c.id).unwrap();
+    let enrolled = db.many_to_many(&rev, &courses, |c| c.id).unwrap();
     for (c, ss) in courses.iter().zip(enrolled.iter()) {
         let names: Vec<&str> = ss.iter().map(|s| s.name.as_str()).collect();
         println!("{} 被 {:?} 选", c.title, names);

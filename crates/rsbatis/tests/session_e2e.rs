@@ -41,8 +41,8 @@ fn session_crud_to_models() {
     seed(&mut db);
 
     let users: Vec<User> = db
-        .fetch_all(&select! { User where User.age >= 18 order_by User.age asc })
-        .expect("fetch_all");
+        .all(&select! { User where User.age >= 18 order_by User.age asc })
+        .expect("all");
     assert_eq!(2, users.len());
     assert_eq!("张三", users[0].name);
     assert_eq!(Some(20), users[0].age);
@@ -58,7 +58,7 @@ fn session_crud_to_models() {
     )
     .unwrap();
     let one: Vec<User> = db
-        .fetch_all(&select! { User where User.name == "无年龄" })
+        .all(&select! { User where User.name == "无年龄" })
         .unwrap();
     assert_eq!(None, one[0].age);
 
@@ -172,7 +172,7 @@ fn from_row_reports_type_mismatch() {
         id: String,
         name: i64,
     }
-    match db.fetch_one_as::<Wrong>(select::<Wrong>()) {
+    match db.one::<Wrong>(select::<Wrong>()) {
         Ok(_) => panic!("类型不符时必须报错，而不是返回半成品"),
         Err(e) => assert_eq!(rsbatis::ErrorKind::TypeMismatch, e.kind),
     }

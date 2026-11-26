@@ -30,7 +30,7 @@ fn setup() -> Session<SqliteDriver> {
 }
 
 fn names(db: &mut Session<SqliteDriver>, stmt: SelectStmt) -> Vec<String> {
-    db.fetch_all::<User>(&stmt.build(db.dialect()))
+    db.all::<User>(&stmt.build(db.dialect()))
         .unwrap()
         .into_iter()
         .map(|u| u.name)
@@ -81,7 +81,7 @@ fn cte_count_matches() {
     let count_sql = SelectStmt::new("t")
         .cte("t", &sub)
         .build_count(db.dialect());
-    let row = db.fetch_one(&count_sql).unwrap().expect("必须返回一行");
+    let row = db.first(&count_sql).unwrap().expect("必须返回一行");
     let n: i64 = row.get(0).unwrap();
     assert_eq!(3, n);
 }

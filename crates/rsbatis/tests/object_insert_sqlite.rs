@@ -51,7 +51,7 @@ fn add_uses_renamed_column_and_autoincrement() {
         .expect("插入");
     assert_eq!(n, 1);
 
-    let rows: Vec<User> = db.fetch_all(&select! { User }).expect("回读");
+    let rows: Vec<User> = db.all(&select! { User }).expect("回读");
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].id, Some(1), "id 由 AUTOINCREMENT 生成");
     assert_eq!(rows[0].age, Some(20), "重命名列 age_years 被正确写入");
@@ -67,7 +67,7 @@ fn none_means_column_omitted_not_null() {
     })
     .expect("插入");
 
-    let rows: Vec<User> = db.fetch_all(&select! { User }).expect("回读");
+    let rows: Vec<User> = db.all(&select! { User }).expect("回读");
     // 表定义里 age_years DEFAULT 21：读回 21 说明这一列压根没出现在 INSERT 里。
     // 如果实现把 None 写成 NULL，这里会是 None。
     assert_eq!(
@@ -101,7 +101,7 @@ fn add_all_inserts_every_model() {
     assert_eq!(n, 3);
 
     let rows: Vec<User> = db
-        .fetch_all(&select! { User order_by User.id asc })
+        .all(&select! { User order_by User.id asc })
         .expect("回读");
     assert_eq!(rows.len(), 3);
     assert_eq!(rows[2].age, Some(21));
@@ -129,7 +129,7 @@ fn add_explicit_null_still_possible_via_builder() {
     )
     .expect("显式 NULL");
 
-    let rows: Vec<User> = db.fetch_all(&select! { User }).expect("回读");
+    let rows: Vec<User> = db.all(&select! { User }).expect("回读");
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].age, None, "set_null 写的是真正的 NULL");
 }

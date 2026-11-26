@@ -48,14 +48,14 @@ fn mysql_selectin_and_belongs_to() {
         eprintln!("跳过：未设置 RSBATIS_MYSQL_URL");
         return;
     };
-    let users: Vec<RU> = db.fetch_all(select! { RU }).expect("查父");
-    let posts = db.load_has_many(&posts_of(), &users, |u| u.id).expect("子");
+    let users: Vec<RU> = db.all(select! { RU }).expect("查父");
+    let posts = db.has_many(&posts_of(), &users, |u| u.id).expect("子");
     assert_eq!(2, posts[0].len());
     assert!(posts[1].is_empty(), "李四没有文章");
 
-    let all: Vec<RP> = db.fetch_all(select! { RP }).expect("查子");
+    let all: Vec<RP> = db.all(select! { RP }).expect("查子");
     let authors = db
-        .load_belongs_to(&author_of(), &all, |p| p.user_id)
+        .belongs_to(&author_of(), &all, |p| p.user_id)
         .expect("父");
     assert_eq!("张三", authors[0].as_ref().expect("作者").name);
     assert_eq!("张三", authors[1].as_ref().expect("同一作者的第二篇").name);
@@ -69,7 +69,7 @@ fn mysql_joined_load() {
     };
     let stmt = select! { RU join RP as p on p.user_id == RU.id order_by RU.id asc };
     let pairs: Vec<(RU, Vec<RP>)> = db
-        .load_joined_has_many(stmt, RU::TABLE, "p", |u: &RU| u.id)
+        .joined_has_many(stmt, RU::TABLE, "p", |u: &RU| u.id)
         .expect("joined");
     assert_eq!(1, pairs.len());
     assert_eq!("张三", pairs[0].0.name);

@@ -46,7 +46,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let sql = db.explain(&stmt);
     println!("分组统计 SQL:\n  {}\n", sql.text);
-    let rows: Vec<UserStats> = db.fetch_all(sql)?;
+    let rows: Vec<UserStats> = db.all(sql)?;
     println!("  → 每组: {:?}\n", rows);
 
     // ── 2. HAVING：只要下单 >= 2 次的用户 ──
@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let sql = db.explain(&stmt);
     println!("带 HAVING 的 SQL:\n  {}\n", sql.text);
-    let rows: Vec<UserCount> = db.fetch_all(sql)?;
+    let rows: Vec<UserCount> = db.all(sql)?;
     println!("  → 下单 >= 2: {:?}\n", rows);
 
     // ── 3. 联表分组：按用户名统计（LEFT JOIN 让没下单的人也出现）──
@@ -79,7 +79,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let sql = db.explain(&stmt);
     println!("联表分组 SQL:\n  {}\n", sql.text);
-    let rows: Vec<NameOrders> = db.fetch_all(sql)?;
+    let rows: Vec<NameOrders> = db.all(sql)?;
     println!(
         "  → 每人订单数（COUNT(orders.id) 不数 NULL，所以没下单的是 0）: {:?}\n",
         rows.iter()

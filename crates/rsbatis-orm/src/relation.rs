@@ -7,16 +7,16 @@
 //! 本模块的选择是把它变成显式的、一次性的预加载：
 //!
 //! ```ignore
-//! let users = db.fetch_all(select! { User })?;
-//! let posts = db.load_has_many(&Post::user(), &users, |u| u.id)?;   // 一条 IN 查询
+//! let users = db.all(select! { User })?;
+//! let posts = db.has_many(&Post::user(), &users, |u| u.id)?;   // 一条 IN 查询
 //! ```
 //!
 //! ## 两种策略
 //!
 //! | 策略 | 查询次数 | 适用 |
 //! | --- | --- | --- |
-//! | `load_has_many` / `load_belongs_to`（selectin） | 2（父 1 + 子 1） | 绝大多数场景；子集合大时更省 |
-//! | `load_joined_has_many`（joined） | 1（JOIN 带回父与子） | 子行较少、想少一次往返 |
+//! | `has_many` / `belongs_to`（selectin） | 2（父 1 + 子 1） | 绝大多数场景；子集合大时更省 |
+//! | `joined_has_many`（joined） | 1（JOIN 带回父与子） | 子行较少、想少一次往返 |
 //!
 //! ## 外键类型
 //!
@@ -151,7 +151,7 @@ impl<P> BelongsTo<P> {
 /// ```ignore
 /// let rel = ManyToMany::<Course>::new("enroll", Student::id(), Course::id(),
 ///                                     Course::id(), |c| c.id);
-/// let courses = db.load_many_to_many(&rel, &students, |s| s.id)?;
+/// let courses = db.many_to_many(&rel, &students, |s| s.id)?;
 /// ```
 pub struct ManyToMany<C> {
     link_table: &'static str,
@@ -205,7 +205,7 @@ impl<C> ManyToMany<C> {
     /// 为什么不是"只查关联表"：关联表里有记录不等于有子 —— 子被删掉时关联行还在，
     /// 只查关联表会给出"有课程"的假结果。JOIN 一次子表就能排除孤儿关联。
     ///
-    /// 代价是多一层 JOIN；收益是这条 EXISTS 与 `load_many_to_many` 的口径一致
+    /// 代价是多一层 JOIN；收益是这条 EXISTS 与 `many_to_many` 的口径一致
     /// （那边也会跳过孤儿关联）。
     pub fn exists_filter(&self, parent_col: Column<i64>) -> Expr {
         let on = Expr::cmp(
@@ -245,7 +245,7 @@ impl<D: Driver> Session<D> {
     ///
     /// 查询次数与父的数量无关。这是它相对于"循环里逐条查"的全部意义：
     /// 100 个父是 2 次查询，不是 101 次。
-    pub fn load_has_many<C, P>(
+    pub fn has_many<C, P>(
         &mut self,
         rel: &HasMany<C>,
         parents: &[P],
@@ -260,7 +260,7 @@ impl<D: Driver> Session<D> {
             return Ok(parents.iter().map(|_| Vec::new()).collect());
         }
 
-        let rows: Vec<C> = self.fetch_all(select::<C>().filter(rel.fk.in_(keys.clone())))?;
+        let rows: Vec<C> = self.all(select::<C>().filter(rel.fk.in_(keys.clone())))?;
 
         let mut buckets: HashMap<i64, Vec<C>> = HashMap::new();
         for row in rows {
@@ -275,11 +275,11 @@ impl<D: Driver> Session<D> {
             .collect())
     }
 
-    /// 一对一预加载：与 `load_has_many` 同一条 `IN` 查询，父侧只留一个。
+    /// 一对一预加载：与 `has_many` 同一条 `IN` 查询，父侧只留一个。
     ///
     /// 找不到子时给 `None`。同一个父在 `parents` 里出现两次时，两边拿到的是
     /// **同一个** `Option<C>` 的克隆，不会出现"第一份有、第二份 None"。
-    pub fn load_has_one<C, P>(
+    pub fn has_one<C, P>(
         &mut self,
         rel: &HasOne<C>,
         parents: &[P],
@@ -293,7 +293,7 @@ impl<D: Driver> Session<D> {
             return Ok(parents.iter().map(|_| None).collect());
         }
 
-        let rows: Vec<C> = self.fetch_all(select::<C>().filter(rel.fk.in_(keys)))?;
+        let rows: Vec<C> = self.all(select::<C>().filter(rel.fk.in_(keys)))?;
 
         let mut buckets: HashMap<i64, C> = HashMap::new();
         for row in rows {
@@ -312,7 +312,7 @@ impl<D: Driver> Session<D> {
     ///
     /// 找不到父时给 `None`。这不只是"外键为 NULL"——也包含外键指向一条已被删除的父，
     /// 那属于数据一致性问题，但读取侧不该 panic。
-    pub fn load_belongs_to<P, C>(
+    pub fn belongs_to<P, C>(
         &mut self,
         rel: &BelongsTo<P>,
         children: &[C],
@@ -326,7 +326,7 @@ impl<D: Driver> Session<D> {
             return Ok(Vec::new());
         }
 
-        let rows: Vec<P> = self.fetch_all(select::<P>().filter(rel.parent_col.in_(keys)))?;
+        let rows: Vec<P> = self.all(select::<P>().filter(rel.parent_col.in_(keys)))?;
         let mut by_key: HashMap<i64, P> = HashMap::new();
         for row in rows {
             by_key.insert((rel.key_of)(&row), row);
@@ -351,7 +351,7 @@ impl<D: Driver> Session<D> {
     ///
     /// 最后一条是刻意的：ORM 不该替调用方编造"这算一条还是两条"的结论。需要去重就在
     /// 关联表上加唯一约束，或者调用方自己去重。悄悄去重会掩盖脏数据。
-    pub fn load_many_to_many<C, P>(
+    pub fn many_to_many<C, P>(
         &mut self,
         rel: &ManyToMany<C>,
         parents: &[P],
@@ -392,7 +392,7 @@ impl<D: Driver> Session<D> {
 
         // 第二步：子表。用子表自己的列做 `IN`。
         let child_keys = unique_keys(links.iter().map(|(_, c)| *c));
-        let children: Vec<C> = self.fetch_all(select::<C>().filter(rel.child_col.in_(child_keys)))?;
+        let children: Vec<C> = self.all(select::<C>().filter(rel.child_col.in_(child_keys)))?;
 
         let mut by_id: HashMap<i64, C> = HashMap::new();
         for row in children {
@@ -460,7 +460,7 @@ impl<D: Driver> Session<D> {
     ///
     /// 同一父的多行只保留一份父实例：JOIN 会让父行重复出现，
     /// 直接 `collect` 会得到 N 份父的副本，调用方还得自己去重。
-    pub fn load_joined_has_many<P, C>(
+    pub fn joined_has_many<P, C>(
         &mut self,
         stmt: SelectStmt,
         parent_prefix: &'static str,

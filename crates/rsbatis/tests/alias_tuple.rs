@@ -55,7 +55,7 @@ fn db() -> Session<SqliteDriver> {
 fn aliased_two_table_tuple_maps_by_projection_order() {
     let mut db = db();
     let rows: Vec<(User, Order)> = db
-        .fetch_all(&select! {
+        .all(&select! {
             User as u join Order as o on o.user_id == u.id
             order_by o.id asc
         })
@@ -70,7 +70,7 @@ fn aliased_two_table_tuple_maps_by_projection_order() {
 fn aliased_three_table_tuple_maps_by_projection_order() {
     let mut db = db();
     let rows: Vec<(User, Order, Item)> = db
-        .fetch_all(&select! {
+        .all(&select! {
             User as u join Order as o on o.user_id == u.id
             join Item as i on i.order_id == o.id
             order_by i.id asc
@@ -88,7 +88,7 @@ fn mixed_alias_and_plain_table_still_maps() {
     // 主表用别名、join 表不用：前缀序列是 ["u", "t_order"]
     let mut db = db();
     let rows: Vec<(User, Order)> = db
-        .fetch_all(&select! {
+        .all(&select! {
             User as u join Order on Order.user_id == u.id
             order_by Order.id asc
         })
@@ -102,7 +102,7 @@ fn no_alias_join_still_works() {
     // 全部不用别名：前缀就是表名，与修复前的行为一致（不能因为改推断就破坏旧路径）
     let mut db = db();
     let rows: Vec<(User, Order)> = db
-        .fetch_all(&select! {
+        .all(&select! {
             User join Order on Order.user_id == User.id
             order_by Order.id asc
         })

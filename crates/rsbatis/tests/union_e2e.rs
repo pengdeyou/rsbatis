@@ -32,7 +32,7 @@ fn seeded() -> Session<SqliteDriver> {
 }
 
 fn vals(db: &mut Session<SqliteDriver>, stmt: &SelectStmt) -> Vec<i64> {
-    let rows: Vec<A> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<A> = db.all(stmt.build(db.dialect())).unwrap();
     rows.into_iter().map(|r| r.v).collect()
 }
 
@@ -67,7 +67,7 @@ fn count_of_union_is_total_rows() {
         .column("v")
         .union_all(&SelectStmt::new("u_b").column("v"));
     let c = stmt.build_count(db.dialect());
-    let total: i64 = db.fetch_one(c).unwrap().unwrap().get::<i64>(0).unwrap();
+    let total: i64 = db.first(c).unwrap().unwrap().get::<i64>(0).unwrap();
     assert_eq!(6, total, "UNION ALL 的总行数必须是两段之和");
 }
 
@@ -78,7 +78,7 @@ fn count_of_union_distinct_counts_once() {
         .column("v")
         .union(&SelectStmt::new("u_b").column("v"));
     let c = stmt.build_count(db.dialect());
-    let total: i64 = db.fetch_one(c).unwrap().unwrap().get::<i64>(0).unwrap();
+    let total: i64 = db.first(c).unwrap().unwrap().get::<i64>(0).unwrap();
     assert_eq!(5, total, "UNION 去重后是 5 行");
 }
 
@@ -131,7 +131,7 @@ fn union_used_as_derived_table_source() {
         v: i64,
         cnt: i64,
     }
-    let mut rows: Vec<Row> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let mut rows: Vec<Row> = db.all(stmt.build(db.dialect())).unwrap();
     rows.sort_by_key(|r| r.v);
     let got: Vec<(i64, i64)> = rows.into_iter().map(|r| (r.v, r.cnt)).collect();
     // 3 出现两次

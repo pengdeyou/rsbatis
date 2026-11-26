@@ -53,7 +53,7 @@ fn row_number_within_partition_mysql() {
         amount: i64,
         rn: i64,
     }
-    let rows: Vec<Row> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<Row> = db.all(stmt.build(db.dialect())).unwrap();
     let got: Vec<(i64, i64, i64)> = rows
         .into_iter()
         .map(|r| (r.user_id, r.amount, r.rn))
@@ -101,7 +101,7 @@ fn top_n_per_group_mysql() {
         user_id: i64,
         amount: i64,
     }
-    let rows: Vec<Row> = db.fetch_all(outer.build(db.dialect())).unwrap();
+    let rows: Vec<Row> = db.all(outer.build(db.dialect())).unwrap();
     let got: Vec<(i64, i64)> = rows.into_iter().map(|r| (r.user_id, r.amount)).collect();
     assert_eq!(vec![(1, 200), (1, 100), (2, 300), (2, 10)], got);
 }
@@ -137,7 +137,7 @@ fn cumulative_sum_mysql() {
         amount: i64,
         running: i64,
     }
-    let rows: Vec<Row> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<Row> = db.all(stmt.build(db.dialect())).unwrap();
     let got: Vec<(i64, i64, i64)> = rows
         .into_iter()
         .map(|r| (r.user_id, r.amount, r.running))
@@ -185,7 +185,7 @@ fn rank_ties_mysql() {
         rk: i64,
         dr: i64,
     }
-    let rows: Vec<Row> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<Row> = db.all(stmt.build(db.dialect())).unwrap();
     let got: Vec<(i64, i64, i64)> = rows.into_iter().map(|r| (r.id, r.rk, r.dr)).collect();
     assert_eq!(vec![(1, 1, 1), (2, 2, 2), (3, 2, 2), (4, 4, 3)], got);
 }
@@ -205,7 +205,7 @@ fn ntile_and_empty_over_mysql() {
     struct Row {
         bucket: i64,
     }
-    let rows: Vec<Row> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<Row> = db.all(stmt.build(db.dialect())).unwrap();
     let buckets: Vec<i64> = rows.into_iter().map(|r| r.bucket).collect();
     assert_eq!(vec![1, 1, 1, 2, 2], buckets);
 }

@@ -30,7 +30,7 @@ fn setup() -> Session<SqliteDriver> {
 
 fn ages(db: &mut Session<SqliteDriver>) -> Vec<(i64, i32)> {
     let mut rows: Vec<User> = db
-        .fetch_all(rsbatis::SelectStmt::for_entity::<User>().build(db.dialect()))
+        .all(rsbatis::SelectStmt::for_entity::<User>().build(db.dialect()))
         .unwrap();
     rows.sort_by_key(|u| u.id);
     rows.into_iter().map(|u| (u.id, u.age)).collect()
@@ -61,7 +61,7 @@ fn update_macro_multiple_fields() {
     );
     db.execute(sql).unwrap();
     let rows: Vec<User> = db
-        .fetch_all(rsbatis::SelectStmt::for_entity::<User>().build(db.dialect()))
+        .all(rsbatis::SelectStmt::for_entity::<User>().build(db.dialect()))
         .unwrap();
     let u1 = rows.iter().find(|u| u.id == 1).unwrap();
     assert_eq!(("x".to_string(), 7), (u1.name.clone(), u1.age));

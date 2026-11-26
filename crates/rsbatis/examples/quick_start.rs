@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 一个宏写完整个查询
     let adults: Vec<User> =
-        db.fetch_all(&select! { User where User.age >= 18 order_by User.age desc })?;
+        db.all(&select! { User where User.age >= 18 order_by User.age desc })?;
     for u in &adults {
         println!("{} ({})", u.name, u.age.unwrap_or(-1));
     }

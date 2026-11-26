@@ -45,7 +45,7 @@ fn group_by_with_having_on_mysql() {
         .column_expr(Expr::count_star().as_("cnt"))
         .group_by(Expr::Col("v_gb_orders", "user_id"))
         .having(Expr::cmp(BinOp::Gt, Expr::count_star(), Expr::lit(1_i64)));
-    let rows: Vec<UserCount> = db.fetch_all(stmt.build(db.dialect())).expect("分组查询");
+    let rows: Vec<UserCount> = db.all(stmt.build(db.dialect())).expect("分组查询");
     assert_eq!(vec![UserCount { user_id: 1, cnt: 2 }], rows);
 }
 
@@ -70,7 +70,7 @@ fn sum_group_by_on_mysql() {
         user_id: i64,
         total: i64,
     }
-    let rows: Vec<UserSum> = db.fetch_all(stmt.build(db.dialect())).expect("SUM 查询");
+    let rows: Vec<UserSum> = db.all(stmt.build(db.dialect())).expect("SUM 查询");
     assert_eq!(
         vec![
             UserSum {
@@ -132,7 +132,7 @@ fn left_join_group_by_on_mysql() {
         cnt: i64,
     }
     let rows: Vec<NameCount> = db
-        .fetch_all(stmt.build(db.dialect()))
+        .all(stmt.build(db.dialect()))
         .expect("LEFT JOIN 分组");
     assert_eq!(
         rows.iter()
@@ -162,7 +162,7 @@ fn raw_sum_is_decimal_and_rejected_as_i64() {
         total: i64,
     }
     let err = db
-        .fetch_all::<UserSum>(&stmt.build(db.dialect()))
+        .all::<UserSum>(&stmt.build(db.dialect()))
         .expect_err("未 CAST 的 SUM 读 i64 必须失败");
     assert!(
         err.to_string().contains("text") || err.to_string().contains("DECIMAL"),

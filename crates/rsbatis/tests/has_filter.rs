@@ -69,7 +69,7 @@ fn users_where(db: &mut Session<SqliteDriver>, filter: Expr) -> Vec<String> {
     struct R {
         name: String,
     }
-    let rows: Vec<R> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<R> = db.all(stmt.build(db.dialect())).unwrap();
     rows.into_iter().map(|r| r.name).collect()
 }
 
@@ -147,7 +147,7 @@ fn exists_with_outer_alias_requires_matching_of_table() {
     struct R {
         name: String,
     }
-    let rows: Vec<R> = db.fetch_all(sql).unwrap();
+    let rows: Vec<R> = db.all(sql).unwrap();
     assert_eq!(2, rows.len());
 }
 
@@ -180,7 +180,7 @@ fn many_to_many_has_excludes_orphan_links() {
     struct R {
         title: String,
     }
-    let rows: Vec<R> = db.fetch_all(sql).unwrap();
+    let rows: Vec<R> = db.all(sql).unwrap();
     assert_eq!(
         vec!["p1"],
         rows.into_iter().map(|r| r.title).collect::<Vec<_>>(),
@@ -214,7 +214,7 @@ fn many_to_many_not_exists() {
     struct R {
         title: String,
     }
-    let rows: Vec<R> = db.fetch_all(sql).unwrap();
+    let rows: Vec<R> = db.all(sql).unwrap();
     assert_eq!(vec!["p2", "p3"], rows.into_iter().map(|r| r.title).collect::<Vec<_>>());
 }
 
@@ -243,7 +243,7 @@ fn exists_inside_join_query() {
     struct R {
         name: String,
     }
-    let rows: Vec<R> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<R> = db.all(stmt.build(db.dialect())).unwrap();
     let mut names: Vec<String> = rows.into_iter().map(|r| r.name).collect();
     names.sort();
     assert_eq!(vec!["A", "B"], names);

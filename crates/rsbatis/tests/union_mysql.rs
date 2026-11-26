@@ -29,7 +29,7 @@ fn seeded() -> Option<Session<MySqlDriver>> {
 }
 
 fn vals(db: &mut Session<MySqlDriver>, stmt: &SelectStmt) -> Vec<i64> {
-    let rows: Vec<A> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<A> = db.all(stmt.build(db.dialect())).unwrap();
     rows.into_iter().map(|r| r.v).collect()
 }
 
@@ -64,7 +64,7 @@ fn count_and_limit_over_union_mysql() {
         .column("v")
         .union_all(&SelectStmt::new("v_ub").column("v"));
     let total: i64 = db
-        .fetch_one(all.build_count(db.dialect()))
+        .first(all.build_count(db.dialect()))
         .unwrap()
         .unwrap()
         .get::<i64>(0)
@@ -99,7 +99,7 @@ fn union_as_derived_table_mysql() {
         v: i64,
         cnt: i64,
     }
-    let rows: Vec<Row> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<Row> = db.all(stmt.build(db.dialect())).unwrap();
     let got: Vec<(i64, i64)> = rows.into_iter().map(|r| (r.v, r.cnt)).collect();
     assert_eq!(vec![(1, 1), (2, 1), (3, 2), (4, 1), (5, 1)], got);
 }

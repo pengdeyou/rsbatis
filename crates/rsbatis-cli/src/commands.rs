@@ -309,7 +309,7 @@ const LOCK_WAIT_SECS: u32 = 30;
 
 fn acquire_lock(db: &mut Session<Engine>, wait: u32) -> Result<(), Failure> {
     let sql = Sql::raw(format!("SELECT GET_LOCK('{LOCK_NAME}', {wait})"));
-    let row = db.fetch_one(&sql)?.ok_or_else(|| {
+    let row = db.first(&sql)?.ok_or_else(|| {
         Failure::Runtime("GET_LOCK 没有返回结果".to_string())
     })?;
     match row.get::<i64>(0) {

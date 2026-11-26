@@ -90,11 +90,11 @@ fn setup() -> Session<Counting<SqliteDriver>> {
 #[test]
 fn selectin_loads_all_children_in_one_query() {
     let mut db = setup();
-    let users: Vec<U> = db.fetch_all(rsbatis::select! { U }).expect("查父");
+    let users: Vec<U> = db.all(rsbatis::select! { U }).expect("查父");
     let before = db.driver().fetches;
 
     let posts = db
-        .load_has_many(&posts_of(), &users, |u| u.id)
+        .has_many(&posts_of(), &users, |u| u.id)
         .expect("预加载子");
 
     assert_eq!(
@@ -121,7 +121,7 @@ fn selectin_skips_query_when_no_parents() {
     let mut db = setup();
     let before = db.driver().fetches;
     let posts = db
-        .load_has_many(&posts_of(), &Vec::<U>::new(), |u| u.id)
+        .has_many(&posts_of(), &Vec::<U>::new(), |u| u.id)
         .expect("空父集合");
     assert!(posts.is_empty());
     assert_eq!(db.driver().fetches, before, "空集合不该发查询");
@@ -130,11 +130,11 @@ fn selectin_skips_query_when_no_parents() {
 #[test]
 fn belongs_to_maps_parent_or_none() {
     let mut db = setup();
-    let posts: Vec<Pst> = db.fetch_all(rsbatis::select! { Pst }).expect("查子");
+    let posts: Vec<Pst> = db.all(rsbatis::select! { Pst }).expect("查子");
     let before = db.driver().fetches;
 
     let authors = db
-        .load_belongs_to(&author_of(), &posts, |p| p.user_id)
+        .belongs_to(&author_of(), &posts, |p| p.user_id)
         .expect("预加载父");
 
     assert_eq!(db.driver().fetches - before, 1, "4 个子也只查 1 次父");
@@ -161,7 +161,7 @@ fn joined_load_groups_and_dedups_parent() {
         U join Pst as p on p.user_id == U.id where U.id == 1
     };
     let pairs: Vec<(U, Vec<Pst>)> = db
-        .load_joined_has_many(stmt, U::TABLE, "p", |u: &U| u.id)
+        .joined_has_many(stmt, U::TABLE, "p", |u: &U| u.id)
         .expect("joined 预加载");
 
     assert_eq!(1, pairs.len(), "张三只有一份父实例，即使 JOIN 出了两行");
@@ -184,7 +184,7 @@ fn joined_load_keeps_parent_order() {
         U join Pst as p on p.user_id == U.id order_by U.id asc
     };
     let pairs: Vec<(U, Vec<Pst>)> = db
-        .load_joined_has_many(stmt, U::TABLE, "p", |u: &U| u.id)
+        .joined_has_many(stmt, U::TABLE, "p", |u: &U| u.id)
         .expect("joined 预加载");
     // 李四没有文章，JOIN 里根本不出现——这正是 joined 的代价：
     // 没有子的父会从结果里消失，而 selectin 会给空 Vec。
@@ -198,12 +198,12 @@ fn duplicate_parents_get_same_children() {
     // 第二次会拿到空 Vec——看起来像"这个用户没有文章"。
     let mut db = setup();
     let users: Vec<U> = db
-        .fetch_all(rsbatis::select! { U where U.id == 1 })
+        .all(rsbatis::select! { U where U.id == 1 })
         .expect("查父");
     let twice = vec![users[0].clone(), users[0].clone()];
 
     let posts = db
-        .load_has_many(&posts_of(), &twice, |u| u.id)
+        .has_many(&posts_of(), &twice, |u| u.id)
         .expect("预加载");
     assert_eq!(2, posts[0].len());
     assert_eq!(2, posts[1].len(), "同一个父出现两次，两次都要拿到子");

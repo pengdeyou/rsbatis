@@ -38,7 +38,7 @@ fn insert_macro_writes_renamed_columns() {
     db.execute(insert! { User { name: "张三", age: 20 } })
         .expect("插入");
 
-    let rows: Vec<User> = db.fetch_all(&select! { User }).expect("回读");
+    let rows: Vec<User> = db.all(&select! { User }).expect("回读");
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].name, "张三");
     assert_eq!(rows[0].age, Some(20), "age_years 列被写入");
@@ -49,7 +49,7 @@ fn insert_macro_writes_renamed_columns() {
 fn omitted_field_lets_database_default_win() {
     let mut db = db();
     db.execute(insert! { User { name: "李四" } }).expect("插入");
-    let rows: Vec<User> = db.fetch_all(&select! { User }).expect("回读");
+    let rows: Vec<User> = db.all(&select! { User }).expect("回读");
     assert_eq!(rows[0].age, Some(21), "没写 age → DEFAULT 21");
 }
 
@@ -59,7 +59,7 @@ fn field_values_accept_expressions() {
     let base = 18;
     db.execute(insert! { User { name: "王五", age: base + 2 } })
         .expect("插入");
-    let rows: Vec<User> = db.fetch_all(&select! { User }).expect("回读");
+    let rows: Vec<User> = db.all(&select! { User }).expect("回读");
     assert_eq!(rows[0].age, Some(20));
 }
 
@@ -77,7 +77,7 @@ fn insert_macro_and_object_add_produce_same_row() {
     .expect("对象插入");
 
     let rows: Vec<User> = db
-        .fetch_all(&select! { User order_by User.id asc })
+        .all(&select! { User order_by User.id asc })
         .expect("回读");
     assert_eq!(rows.len(), 2);
     assert_eq!(rows[0].age, rows[1].age);

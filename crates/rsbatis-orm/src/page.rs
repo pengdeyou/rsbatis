@@ -121,7 +121,7 @@ impl<D: Driver> Session<D> {
             Vec::new()
         } else {
             let page_stmt = stmt.clone().limit(req.size).offset(offset);
-            self.fetch_all::<T>(page_stmt)?
+            self.all::<T>(page_stmt)?
         };
 
         Ok(Page {

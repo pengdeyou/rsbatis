@@ -60,7 +60,7 @@ impl Fix {
         let sql = rsbatis::Sql::raw(format!(
             "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{table}'"
         ));
-        let row = db.fetch_one(&sql).unwrap().unwrap();
+        let row = db.first(&sql).unwrap().unwrap();
         row.get::<i64>(0).unwrap() > 0
     }
     fn applied_count(&self) -> i64 {
@@ -69,7 +69,7 @@ impl Fix {
             "SELECT COUNT(*) FROM {}",
             rsbatis::MIGRATIONS_TABLE
         ));
-        match db.fetch_one(&sql) {
+        match db.first(&sql) {
             Ok(Some(r)) => r.get::<i64>(0).unwrap(),
             _ => 0,
         }

@@ -50,14 +50,14 @@ fn roundtrip_keeps_microseconds_and_compares_as_time() {
 
     // 比较走字符串比较：格式定长到微秒，字典序 == 时间序
     let after_noon: Vec<Event> = db
-        .fetch_all(select! { Event where Event.created >= late })
+        .all(select! { Event where Event.created >= late })
         .unwrap();
     assert_eq!(1, after_noon.len());
     assert_eq!("晚", after_noon[0].name);
 
     // 微秒必须原样回来
     let all: Vec<Event> = db
-        .fetch_all(select! { Event order_by Event.created asc })
+        .all(select! { Event order_by Event.created asc })
         .unwrap();
     assert_eq!(2, all.len());
     assert_eq!(early_stored, all[0].created, "纳秒被截到微秒，不应丢整秒");
@@ -72,7 +72,7 @@ fn roundtrip_keeps_microseconds_and_compares_as_time() {
     )
     .unwrap();
     let all2: Vec<Event> = db
-        .fetch_all(select! { Event order_by Event.id asc })
+        .all(select! { Event order_by Event.id asc })
         .unwrap();
     assert_eq!(late, all2[0].created);
 }

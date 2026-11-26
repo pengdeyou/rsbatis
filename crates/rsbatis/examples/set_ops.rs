@@ -34,7 +34,7 @@ fn main() {
     // 1) 交集：既在员工里又在值班名单里
     let both = emp_ids.intersect(&oncall_ids);
     println!("SQL: {}", db.explain(&both).text);
-    let rows: Vec<IdRow> = db.fetch_all(&both).unwrap();
+    let rows: Vec<IdRow> = db.all(&both).unwrap();
     println!("既在名册又在值班：{:?}\n", rows.iter().map(|r| r.id).collect::<Vec<_>>());
 
     // 2) 差集：所有员工减去值班的人
@@ -43,7 +43,7 @@ fn main() {
         .except(&oncall_ids)
         .order_by(Expr::bare_col("id"), SortOrder::Asc);
     println!("SQL: {}", db.explain(&not_oncall).text);
-    let rows: Vec<IdRow> = db.fetch_all(&not_oncall).unwrap();
+    let rows: Vec<IdRow> = db.all(&not_oncall).unwrap();
     println!("没排值班的：{:?}\n", rows.iter().map(|r| r.id).collect::<Vec<_>>());
 
     // 3) 链式差集：(全部 - 名册A) - 名册B
@@ -57,7 +57,7 @@ fn main() {
     ));
     others = others.except(&late);
     println!("SQL: {}", db.explain(&others).text);
-    let rows: Vec<IdRow> = db.fetch_all(&others).unwrap();
+    let rows: Vec<IdRow> = db.all(&others).unwrap();
     println!("名册外且不属于 team 2 之后：{:?}\n", rows.iter().map(|r| r.id).collect::<Vec<_>>());
 
     // 4) ⚠️ 混用 UNION 与 INTERSECT：两个引擎结果不同，build() 会告警
@@ -70,7 +70,7 @@ fn main() {
     for w in &sql.warnings {
         println!("⚠️  {}", w);
     }
-    let rows: Vec<IdRow> = db.fetch_all(&mixed).unwrap();
+    let rows: Vec<IdRow> = db.all(&mixed).unwrap();
     println!("SQLite 上是左结合 (A∪B)∩C：{:?}", rows.iter().map(|r| r.id).collect::<Vec<_>>());
     println!("同一条 SQL 在 MySQL/MariaDB 上会按 A∪(B∩C) 求值，结果不同");
 }

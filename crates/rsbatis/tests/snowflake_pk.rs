@@ -30,13 +30,13 @@ fn zero_id_is_replaced_and_explicit_id_is_kept() {
     // 显式主键（非 0）不被"纠正"
     db.add(&Event { id: 7, name: "imported".into() }).unwrap();
     let row: Event = db
-        .fetch_one_as(&select! { Event where Event.id == 7 })
+        .one(&select! { Event where Event.id == 7 })
         .unwrap()
         .expect("显式 id 应该原样落库");
     assert_eq!(row.id, 7);
 
     let all: Vec<Event> = db
-        .fetch_all(&select! { Event where Event.id != 7 order_by Event.id asc })
+        .all(&select! { Event where Event.id != 7 order_by Event.id asc })
         .unwrap();
     assert_eq!(all.len(), 2);
     assert!(all.iter().all(|e| e.id != 0));

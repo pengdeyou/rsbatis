@@ -56,7 +56,7 @@ fn recursive_numbers_one_to_five() {
     struct N {
         n: i64,
     }
-    let rows: Vec<N> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<N> = db.all(stmt.build(db.dialect())).unwrap();
     assert_eq!(
         vec![1, 2, 3, 4, 5],
         rows.into_iter().map(|r| r.n).collect::<Vec<_>>()
@@ -97,7 +97,7 @@ fn recursive_tree_descendants() {
         .recursive_cte("d", &base, &step)
         .order_by(Expr::col("d", "id"), SortOrder::Asc);
 
-    let rows: Vec<Named> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<Named> = db.all(stmt.build(db.dialect())).unwrap();
     let got: Vec<(i64, String)> = rows.into_iter().map(|r| (r.id, r.name)).collect();
     assert_eq!(
         vec![
@@ -128,7 +128,7 @@ fn recursive_cte_count_is_total_after_expansion() {
         .column("n")
         .recursive_cte("nums", &base, &step);
     let count = stmt.build_count(db.dialect());
-    let total: i64 = db.fetch_one(count).unwrap().unwrap().get::<i64>(0).unwrap();
+    let total: i64 = db.first(count).unwrap().unwrap().get::<i64>(0).unwrap();
     assert_eq!(10, total);
 }
 

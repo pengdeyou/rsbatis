@@ -61,13 +61,13 @@ fn datetime_roundtrip_on_real_mysql() {
 
     // MySQL 服务端按 DATETIME 语义比较，而不是字符串比较
     let after_noon: Vec<Event> = db
-        .fetch_all(select! { Event where Event.created >= late })
+        .all(select! { Event where Event.created >= late })
         .unwrap();
     assert_eq!(1, after_noon.len());
     assert_eq!("晚", after_noon[0].name);
 
     let all: Vec<Event> = db
-        .fetch_all(select! { Event order_by Event.created asc })
+        .all(select! { Event order_by Event.created asc })
         .unwrap();
     assert_eq!(2, all.len());
     assert_eq!(early, all[0].created, "微秒必须无损往返");

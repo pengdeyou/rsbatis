@@ -56,7 +56,7 @@ fn recursive_numbers_mysql() {
     struct N {
         n: i64,
     }
-    let rows: Vec<N> = db.fetch_all(numbers(5).build(db.dialect())).unwrap();
+    let rows: Vec<N> = db.all(numbers(5).build(db.dialect())).unwrap();
     assert_eq!(
         vec![1, 2, 3, 4, 5],
         rows.into_iter().map(|r| r.n).collect::<Vec<_>>()
@@ -102,7 +102,7 @@ fn recursive_tree_mysql() {
         id: i64,
         name: String,
     }
-    let rows: Vec<Named> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<Named> = db.all(stmt.build(db.dialect())).unwrap();
     let got: Vec<(i64, String)> = rows.into_iter().map(|r| (r.id, r.name)).collect();
     assert_eq!(6, got.len(), "root 展开应得 6 个节点，got: {got:?}");
     assert_eq!((1, "root".to_string()), got[0]);
@@ -115,7 +115,7 @@ fn recursive_count_mysql() {
         None => return,
     };
     let count = numbers(10).build_count(db.dialect());
-    let total: i64 = db.fetch_one(count).unwrap().unwrap().get::<i64>(0).unwrap();
+    let total: i64 = db.first(count).unwrap().unwrap().get::<i64>(0).unwrap();
     assert_eq!(10, total);
 }
 
@@ -146,6 +146,6 @@ fn recursive_cte_with_plain_cte_mysql() {
     struct IdOnly {
         id: i64,
     }
-    let rows: Vec<IdOnly> = db.fetch_all(sql).unwrap();
+    let rows: Vec<IdOnly> = db.all(sql).unwrap();
     assert_eq!(6, rows.len());
 }

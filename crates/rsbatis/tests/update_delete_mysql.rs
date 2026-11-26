@@ -28,7 +28,7 @@ fn seeded() -> Option<Session<MySqlDriver>> {
 
 fn ages(db: &mut Session<MySqlDriver>) -> Vec<(i64, i32)> {
     let mut rows: Vec<User> = db
-        .fetch_all(SelectStmt::for_entity::<User>().build(db.dialect()))
+        .all(SelectStmt::for_entity::<User>().build(db.dialect()))
         .unwrap();
     rows.sort_by_key(|u| u.id);
     rows.into_iter().map(|u| (u.id, u.age)).collect()
@@ -72,7 +72,7 @@ fn update_macro_mysql_multi_field_and_affected_rows() {
     let stmt = update!(User { name: "z", age: 1 } where User.id == 2);
     db.execute(stmt.build(db.dialect())).unwrap();
     let rows: Vec<User> = db
-        .fetch_all(SelectStmt::for_entity::<User>().build(db.dialect()))
+        .all(SelectStmt::for_entity::<User>().build(db.dialect()))
         .unwrap();
     let u2 = rows.iter().find(|u| u.id == 2).unwrap();
     assert_eq!(("z".to_string(), 1), (u2.name.clone(), u2.age));

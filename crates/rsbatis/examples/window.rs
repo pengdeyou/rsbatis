@@ -44,7 +44,7 @@ fn main() {
                 .as_("rn"),
         );
     println!("1) 分区排名\nSQL: {}\n", db.explain(&stmt).text);
-    let rows: Vec<Ranked> = db.fetch_all(&stmt).unwrap();
+    let rows: Vec<Ranked> = db.all(&stmt).unwrap();
     for r in rows {
         println!("   user={} amount={} rn={}", r.user_id, r.amount, r.rn);
     }
@@ -74,7 +74,7 @@ fn main() {
         user_id: i64,
         amount: i64,
     }
-    for r in db.fetch_all::<Top>(&outer).unwrap() {
+    for r in db.all::<Top>(&outer).unwrap() {
         println!("   user={} amount={}", r.user_id, r.amount);
     }
 
@@ -102,7 +102,7 @@ fn main() {
         amount: i64,
         running: i64,
     }
-    for r in db.fetch_all::<Run>(&stmt).unwrap() {
+    for r in db.all::<Run>(&stmt).unwrap() {
         println!(
             "   user={} amount={} running={}",
             r.user_id, r.amount, r.running

@@ -1228,7 +1228,7 @@ fn with_hint(e: syn::Error, hint: &str) -> syn::Error {
 // #[rsbatis(table = "users")]
 // struct User { id: i64, name: String, age: Option<i32> }
 //
-// let users: Vec<User> = session.fetch_all(&select! { User })?;
+// let users: Vec<User> = session.all(&select! { User })?;
 // ```
 //
 // 生成的代码逐列 `get_by_name::<字段类型>(列名)`：

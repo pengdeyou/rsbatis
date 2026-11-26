@@ -63,7 +63,7 @@ fn seeded() -> Option<Session<MySqlDriver>> {
 }
 
 fn names(db: &mut Session<MySqlDriver>, stmt: SelectStmt) -> Vec<String> {
-    db.fetch_all::<User>(&stmt.build(db.dialect()))
+    db.all::<User>(&stmt.build(db.dialect()))
         .expect("查用户")
         .into_iter()
         .map(|u| u.name)
@@ -158,7 +158,7 @@ fn in_subquery_with_limit_is_warned_not_silently_broken() {
     assert!(sql.warnings[0].contains("1235"));
 
     // 真去执行会拿到数据库错误——把这一点也断言下来，防止有人以为告警是多余的
-    let err = db.fetch_all::<User>(&sql).unwrap_err();
+    let err = db.all::<User>(&sql).unwrap_err();
     assert!(
         err.to_string().contains("1235"),
         "expected 1235, got: {err}"

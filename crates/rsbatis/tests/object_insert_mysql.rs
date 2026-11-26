@@ -40,7 +40,7 @@ fn mysql_add_and_read_back() {
     })
     .expect("插入");
 
-    let rows: Vec<User> = db.fetch_all(&select! { User }).expect("回读");
+    let rows: Vec<User> = db.all(&select! { User }).expect("回读");
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].id, Some(1));
     assert_eq!(rows[0].age, Some(20), "重命名列 age_years 写入成功");
@@ -55,7 +55,7 @@ fn mysql_none_skips_column_and_default_applies() {
         age: None,
     })
     .expect("插入");
-    let rows: Vec<User> = db.fetch_all(&select! { User }).expect("回读");
+    let rows: Vec<User> = db.all(&select! { User }).expect("回读");
     assert_eq!(rows[0].age, Some(21), "None 应跳过该列，让 DEFAULT 21 生效");
 }
 
@@ -79,7 +79,7 @@ fn mysql_add_all_inside_transaction() {
         tx.commit().expect("提交");
     }
     let rows: Vec<User> = db
-        .fetch_all(&select! { User order_by User.id asc })
+        .all(&select! { User order_by User.id asc })
         .expect("回读");
     assert_eq!(rows.len(), 2);
     assert_eq!(rows[1].age, Some(21));

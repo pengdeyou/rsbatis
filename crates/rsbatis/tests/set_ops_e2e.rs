@@ -32,7 +32,7 @@ struct V {
 }
 
 fn vals(db: &mut Session<SqliteDriver>, stmt: &SelectStmt) -> Vec<i64> {
-    let mut rows: Vec<V> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let mut rows: Vec<V> = db.all(stmt.build(db.dialect())).unwrap();
     rows.sort_by_key(|r| r.v);
     rows.into_iter().map(|r| r.v).collect()
 }
@@ -127,7 +127,7 @@ fn count_of_except_is_rows_after_difference() {
         .except(&SelectStmt::new("s_b").column("v"));
     let c = stmt.build_count(db.dialect());
     let total: i64 = db
-        .fetch_one(c)
+        .first(c)
         .unwrap()
         .unwrap()
         .get::<i64>(0)

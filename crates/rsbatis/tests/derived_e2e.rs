@@ -34,7 +34,7 @@ fn setup() -> Session<SqliteDriver> {
 
 fn names(session: &mut Session<SqliteDriver>, stmt: SelectStmt) -> Vec<String> {
     session
-        .fetch_all::<User>(&stmt.build(session.dialect()))
+        .all::<User>(&stmt.build(session.dialect()))
         .unwrap()
         .into_iter()
         .map(|u| u.name)
@@ -101,7 +101,7 @@ fn derived_table_with_computed_column() {
 
     // 这里映射的不是 User，所以单独取一列
     let rows = db
-        .fetch_all::<UserIdOnly>(&outer.build(db.dialect()))
+        .all::<UserIdOnly>(&outer.build(db.dialect()))
         .unwrap();
     assert_eq!(
         vec![1_i64],
@@ -122,7 +122,7 @@ fn derived_table_count_matches() {
         .filter(Column::<i32>::new("dv_users", "age").ge(20_i32));
     let count_sql = SelectStmt::from_subquery(&inner, "t").build_count(db.dialect());
     let row = db
-        .fetch_one(&count_sql)
+        .first(&count_sql)
         .unwrap()
         .expect("COUNT 必须返回一行");
     let n: i64 = row.get(0).unwrap();
@@ -166,7 +166,7 @@ fn join_derived_table_returns_joined_rows() {
             Expr::Col("t", "user_id"),
         ),
     );
-    let rows = db.fetch_all::<NameOnly>(&stmt.build(db.dialect())).unwrap();
+    let rows = db.all::<NameOnly>(&stmt.build(db.dialect())).unwrap();
     assert_eq!(
         vec!["a".to_string()],
         rows.into_iter().map(|r| r.name).collect::<Vec<_>>()
@@ -196,6 +196,6 @@ fn join_derived_table_param_order_is_observable() {
         )
         .filter(Column::<i32>::new("dv_users", "age").ge(30_i32));
     // 金额 >=150 只有 user1（age=20），再要求 age>=30 → 空集
-    let rows = db.fetch_all::<NameOnly>(&stmt.build(db.dialect())).unwrap();
+    let rows = db.all::<NameOnly>(&stmt.build(db.dialect())).unwrap();
     assert!(rows.is_empty(), "参数错位会在这里露馅");
 }

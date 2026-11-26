@@ -63,7 +63,7 @@ fn setup() -> Session<SqliteDriver> {
 
 fn names(session: &mut Session<SqliteDriver>, stmt: SelectStmt) -> Vec<String> {
     session
-        .fetch_all::<User>(&stmt.build(session.dialect()))
+        .all::<User>(&stmt.build(session.dialect()))
         .unwrap()
         .into_iter()
         .map(|u| u.name)

@@ -51,7 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let sql = db.explain(&outer);
     println!("派生表 SQL:\n  {}\n", sql.text);
-    let rows = db.fetch_all::<NameOnly>(&sql)?;
+    let rows = db.all::<NameOnly>(&sql)?;
     println!(
         "  → 30 岁以上且在派生表里的人: {:?}\n",
         rows.into_iter().map(|r| r.name).collect::<Vec<_>>()
@@ -65,7 +65,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ));
     let sql = db.explain(&cte_stmt);
     println!("CTE SQL:\n  {}\n", sql.text);
-    let rows = db.fetch_all::<NameOnly>(&sql)?;
+    let rows = db.all::<NameOnly>(&sql)?;
     println!(
         "  → 40 岁以上: {:?}\n",
         rows.into_iter().map(|r| r.name).collect::<Vec<_>>()
@@ -89,7 +89,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     let sql = db.explain(&joined);
     println!("JOIN 派生表 SQL:\n  {}\n", sql.text);
-    let rows = db.fetch_all::<NameOnly>(&sql)?;
+    let rows = db.all::<NameOnly>(&sql)?;
     println!(
         "  → 有大额订单的人: {:?}\n",
         rows.into_iter().map(|r| r.name).collect::<Vec<_>>()

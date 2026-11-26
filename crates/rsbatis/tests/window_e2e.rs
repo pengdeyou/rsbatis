@@ -51,7 +51,7 @@ fn row_number_ranks_within_partition() {
                 )
                 .as_("rn"),
         );
-    let rows: Vec<Ranked> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<Ranked> = db.all(stmt.build(db.dialect())).unwrap();
     let mut got: Vec<(i64, i64, i64)> = rows
         .into_iter()
         .map(|r| (r.user_id, r.amount, r.rn))
@@ -94,7 +94,7 @@ fn top_n_per_group_via_derived_table() {
         user_id: i64,
         amount: i64,
     }
-    let rows: Vec<Top> = db.fetch_all(outer.build(db.dialect())).unwrap();
+    let rows: Vec<Top> = db.all(outer.build(db.dialect())).unwrap();
     let mut got: Vec<(i64, i64)> = rows.into_iter().map(|r| (r.user_id, r.amount)).collect();
     got.sort();
     assert_eq!(vec![(1, 100), (1, 200), (2, 10), (2, 300)], got);
@@ -122,7 +122,7 @@ fn cumulative_sum_frame() {
         amount: i64,
         running: i64,
     }
-    let rows: Vec<Row> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<Row> = db.all(stmt.build(db.dialect())).unwrap();
     let mut got: Vec<(i64, i64, i64)> = rows
         .into_iter()
         .map(|r| (r.user_id, r.amount, r.running))
@@ -161,7 +161,7 @@ fn lag_with_explicit_order() {
         id: i64,
         prev: Option<i64>,
     }
-    let rows: Vec<Row> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<Row> = db.all(stmt.build(db.dialect())).unwrap();
     let by_id: Vec<(i64, Option<i64>)> = rows.into_iter().map(|r| (r.id, r.prev)).collect();
     // 用户 1 按 amount 升序是 id3(50) → id1(100) → id2(200)，
     // 所以 id1 的前一行是 50、id2 的前一行是 100、id3 是分区首行( NULL )。
@@ -206,7 +206,7 @@ fn rank_vs_dense_rank_on_ties() {
         rk: i64,
         dr: i64,
     }
-    let rows: Vec<Row> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<Row> = db.all(stmt.build(db.dialect())).unwrap();
     let got: Vec<(i64, i64, i64)> = rows.into_iter().map(|r| (r.id, r.rk, r.dr)).collect();
     // RANK 跳号（1,2,2,4），DENSE_RANK 不跳（1,2,2,3）
     assert_eq!(vec![(1, 1, 1), (2, 2, 2), (3, 2, 2), (4, 4, 3)], got);
@@ -226,7 +226,7 @@ fn ntile_buckets_total_sum() {
     struct Row {
         bucket: i64,
     }
-    let rows: Vec<Row> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<Row> = db.all(stmt.build(db.dialect())).unwrap();
     // 5 行切 2 桶：3 + 2
     let buckets: Vec<i64> = rows.into_iter().map(|r| r.bucket).collect();
     assert_eq!(vec![1, 1, 1, 2, 2], buckets);
@@ -256,7 +256,7 @@ fn whole_partition_last_value() {
         user_id: i64,
         mx: i64,
     }
-    let rows: Vec<Row> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<Row> = db.all(stmt.build(db.dialect())).unwrap();
     // 显式整分区帧之后，每行拿到的是分区最大值，而不是"到当前行为止"
     let got: Vec<(i64, i64)> = rows.into_iter().map(|r| (r.user_id, r.mx)).collect();
     assert_eq!(vec![(1, 200), (1, 200), (1, 200), (2, 300), (2, 300)], got);

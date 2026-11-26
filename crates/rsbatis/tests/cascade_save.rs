@@ -78,7 +78,7 @@ fn insert_tree_fills_parent_id_into_children() {
     assert_eq!((Some(1), Some(2)), (depts[0].id, depts[1].id), "父的 id 被回填");
 
     let staff: Vec<Staff> = db
-        .fetch_all(
+        .all(
             SelectStmt::new("c_staff")
                 .column("id")
                 .column("dept_id")
@@ -115,7 +115,7 @@ fn insert_tree_rolls_back_all_on_child_failure() {
 
     // 父也不该留下
     let count: i64 = db
-        .fetch_one(
+        .first(
             SelectStmt::new("c_dept")
                 .column_expr(rsbatis::Expr::count_star())
                 .build(db.dialect()),

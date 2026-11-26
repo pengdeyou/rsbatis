@@ -28,7 +28,7 @@ fn seeded() -> Option<Session<MySqlDriver>> {
 }
 
 fn names(db: &mut Session<MySqlDriver>, stmt: SelectStmt) -> Vec<String> {
-    db.fetch_all::<User>(&stmt.build(db.dialect()))
+    db.all::<User>(&stmt.build(db.dialect()))
         .expect("CTE 查询失败")
         .into_iter()
         .map(|u| u.name)
@@ -69,7 +69,7 @@ fn cte_count_on_mysql() {
         .cte("t", &sub)
         .build_count(db.dialect());
     let row = db
-        .fetch_one(&count_sql)
+        .first(&count_sql)
         .expect("COUNT 查询失败")
         .expect("必须返回一行");
     let n: i64 = row.get(0).expect("取计数");

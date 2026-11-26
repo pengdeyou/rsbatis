@@ -4,7 +4,7 @@
 //!
 //! ## 当前能力（0.1.0-alpha.2）
 //!
-//! - `Session<D>`：连接 + 事务状态，提供 `execute` / `fetch` / `fetch_all::<T>`；
+//! - `Session<D>`：连接 + 事务状态，提供 `execute` / `fetch` / `all::<T>`；
 //! - `Transaction`：RAII，作用域结束未 `commit` 即回滚；
 //! - `FromRow`：把 `Row` 转成模型结构体（由 `#[derive(FromRow)]` 生成）；
 //! - 关系预加载：`HasMany` / `BelongsTo` + selectin 与 joined 两种策略；

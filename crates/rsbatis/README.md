@@ -4,7 +4,7 @@ A SQLAlchemy-style ORM for Rust — write queries that read like business code,
 with column names and value types still checked by `rustc`.
 
 ```rust
-let users: Vec<User> = db.fetch_all(&select! {
+let users: Vec<User> = db.all(&select! {
     User where User.age >= 18 order_by User.age desc limit 10
 })?;
 // SELECT * FROM "users" WHERE "age" >= ? ORDER BY "age" DESC LIMIT ?
@@ -73,7 +73,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .set(User::col_age(), 20)
         .build(Dialect::Sqlite))?;
 
-    let adults: Vec<User> = db.fetch_all(&select! { User where User.age >= 18 })?;
+    let adults: Vec<User> = db.all(&select! { User where User.age >= 18 })?;
     println!("{} adults", adults.len());
     Ok(())
 }
@@ -113,7 +113,7 @@ a literal `NULL` would defeat `AUTOINCREMENT` / `DEFAULT`. Writing an explicit N
 ## Joins and aliases
 
 ```rust
-let rows: Vec<(User, Order)> = db.fetch_all(&select! {
+let rows: Vec<(User, Order)> = db.all(&select! {
     User as u join Order as o on o.user_id == u.id
     where u.age >= 18 order_by o.amount desc
 })?;
@@ -130,14 +130,14 @@ single struct from a self-join is refused rather than guessed.
 
 ```rust
 let rel = HasMany::new(Post::col_user_id(), |p: &Post| p.user_id);
-let posts = db.load_has_many(&rel, &users, |u| u.id)?;          // Vec<Vec<Post>>, 2 queries total
+let posts = db.has_many(&rel, &users, |u| u.id)?;          // Vec<Vec<Post>>, 2 queries total
 
 let rel = BelongsTo::new(Post::col_user_id(), User::col_id(), |u: &User| u.id);
-let authors = db.load_belongs_to(&rel, &posts, |p| p.user_id)?; // Vec<Option<User>>
+let authors = db.belongs_to(&rel, &posts, |p| p.user_id)?; // Vec<Option<User>>
 ```
 
-`load_has_many` is a selectin: one `IN` query regardless of how many parents you pass, and no
-query at all for an empty parent set. `load_joined_has_many` folds everything into a single join
+`has_many` is a selectin: one `IN` query regardless of how many parents you pass, and no
+query at all for an empty parent set. `joined_has_many` folds everything into a single join
 and deduplicates parents. Counting drivers in the test suite assert the query counts, so
 "it is not N+1" is a checked claim rather than a comment.
 

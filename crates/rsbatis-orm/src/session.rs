@@ -149,7 +149,7 @@ impl<D: Driver> Session<D> {
                     stmt = stmt.set_raw(col, value);
                 }
                 let sql = stmt.returning([pk]).build(self.dialect());
-                return match self.fetch_one(sql)? {
+                return match self.first(sql)? {
                     Some(row) => row.get::<i64>(0),
                     None => Err(DriverError::new(
                         ErrorKind::Other,
@@ -334,12 +334,12 @@ impl<D: Driver> Session<D> {
     }
 
     /// 读回第一行（没有则 `None`）。注意这不是 LIMIT 1 优化，驱动仍会读完整个结果集。
-    pub fn fetch_one(&mut self, stmt: impl ToSql) -> Result<Option<Row>, DriverError> {
+    pub fn first(&mut self, stmt: impl ToSql) -> Result<Option<Row>, DriverError> {
         Ok(self.fetch(stmt)?.into_iter().next())
     }
 
     /// 读回并转成模型。
-    pub fn fetch_all<T: FromRow>(&mut self, stmt: impl ToSql) -> Result<Vec<T>, DriverError> {
+    pub fn all<T: FromRow>(&mut self, stmt: impl ToSql) -> Result<Vec<T>, DriverError> {
         let sql = stmt.to_sql(self.dialect());
         self.driver
             .fetch(&sql)?
@@ -348,7 +348,7 @@ impl<D: Driver> Session<D> {
             .collect::<Result<Vec<T>, DriverError>>()
     }
 
-    pub fn fetch_one_as<T: FromRow>(&mut self, stmt: impl ToSql) -> Result<Option<T>, DriverError> {
+    pub fn one<T: FromRow>(&mut self, stmt: impl ToSql) -> Result<Option<T>, DriverError> {
         let sql = stmt.to_sql(self.dialect());
         match self.driver.fetch(&sql)?.first() {
             Some(row) => Ok(Some(T::from_row(row)?)),
@@ -430,16 +430,16 @@ impl<'a, D: Driver> Transaction<'a, D> {
         self.session.fetch(stmt)
     }
 
-    pub fn fetch_one(&mut self, stmt: impl ToSql) -> Result<Option<Row>, DriverError> {
-        self.session.fetch_one(stmt)
+    pub fn first(&mut self, stmt: impl ToSql) -> Result<Option<Row>, DriverError> {
+        self.session.first(stmt)
     }
 
-    pub fn fetch_all<T: FromRow>(&mut self, stmt: impl ToSql) -> Result<Vec<T>, DriverError> {
-        self.session.fetch_all(stmt)
+    pub fn all<T: FromRow>(&mut self, stmt: impl ToSql) -> Result<Vec<T>, DriverError> {
+        self.session.all(stmt)
     }
 
-    pub fn fetch_one_as<T: FromRow>(&mut self, stmt: impl ToSql) -> Result<Option<T>, DriverError> {
-        self.session.fetch_one_as(stmt)
+    pub fn one<T: FromRow>(&mut self, stmt: impl ToSql) -> Result<Option<T>, DriverError> {
+        self.session.one(stmt)
     }
 
     pub fn commit(mut self) -> Result<(), DriverError> {

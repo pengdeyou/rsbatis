@@ -43,7 +43,7 @@ fn main() {
     struct N {
         n: i64,
     }
-    let rows: Vec<N> = db.fetch_all(&nums).unwrap();
+    let rows: Vec<N> = db.all(&nums).unwrap();
     println!(
         "   n = {:?}\n",
         rows.into_iter().map(|r| r.n).collect::<Vec<_>>()
@@ -85,7 +85,7 @@ fn main() {
         id: i64,
         name: String,
     }
-    for r in db.fetch_all::<Named>(&tree).unwrap() {
+    for r in db.all::<Named>(&tree).unwrap() {
         println!("   #{} {}", r.id, r.name);
     }
 }

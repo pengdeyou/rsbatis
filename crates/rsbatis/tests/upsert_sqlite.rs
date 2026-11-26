@@ -56,7 +56,7 @@ fn session() -> Session<SqliteDriver> {
 }
 
 fn load(s: &mut Session<SqliteDriver>) -> Vec<User> {
-    s.fetch_all(rsbatis::select! { User order_by User.id asc })
+    s.all(rsbatis::select! { User order_by User.id asc })
         .expect("回读")
 }
 
@@ -142,7 +142,7 @@ fn save_with_only_pk_does_nothing_on_conflict() {
     })
     .expect("只给主键的 save 不应报错");
 
-    let rows: Vec<PkOnly> = s.fetch_all(rsbatis::select! { PkOnly }).expect("回读");
+    let rows: Vec<PkOnly> = s.all(rsbatis::select! { PkOnly }).expect("回读");
     assert_eq!(1, rows.len());
     assert_eq!(
         Some("原值".to_string()),

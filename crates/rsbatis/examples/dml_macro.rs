@@ -14,7 +14,7 @@ struct User {
 
 fn dump(db: &mut Session<SqliteDriver>) -> Vec<String> {
     let mut rows: Vec<User> = db
-        .fetch_all(&SelectStmt::for_entity::<User>())
+        .all(&SelectStmt::for_entity::<User>())
         .unwrap();
     rows.sort_by_key(|u| u.id);
     rows.into_iter()

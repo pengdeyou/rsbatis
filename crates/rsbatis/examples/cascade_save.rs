@@ -64,7 +64,7 @@ fn main() {
     println!("插入 {parents} 个部门、{children} 名员工\n");
 
     let staff: Vec<Staff> = db
-        .fetch_all(
+        .all(
             &SelectStmt::new("staff")
                 .column("id")
                 .column("dept_id")
@@ -87,7 +87,7 @@ fn main() {
     });
     println!("\n子表主键冲突 → {:?}", res.err().map(|e| e.message));
     let dept_count: i64 = db
-        .fetch_one(
+        .first(
             SelectStmt::new("dept")
                 .column_expr(rsbatis::Expr::count_star()),
         )

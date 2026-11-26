@@ -39,7 +39,7 @@ struct V {
 }
 
 fn vals(db: &mut Session<MySqlDriver>, stmt: &SelectStmt) -> Vec<i64> {
-    let mut rows: Vec<V> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let mut rows: Vec<V> = db.all(stmt.build(db.dialect())).unwrap();
     rows.sort_by_key(|r| r.v);
     rows.into_iter().map(|r| r.v).collect()
 }
@@ -114,7 +114,7 @@ fn count_except_mysql() {
         .column("v")
         .except(&SelectStmt::new("v_s_b").column("v"));
     let total: i64 = db
-        .fetch_one(stmt.build_count(db.dialect()))
+        .first(stmt.build_count(db.dialect()))
         .unwrap()
         .unwrap()
         .get::<i64>(0)

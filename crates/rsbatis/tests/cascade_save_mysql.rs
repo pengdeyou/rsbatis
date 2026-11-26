@@ -124,7 +124,7 @@ fn insert_tree_on_mariadb() {
     assert_eq!((2, 4), (pc, cc));
 
     let staff: Vec<Staff> = db
-        .fetch_all(
+        .all(
             SelectStmt::new("k_staff")
                 .column("id")
                 .column("dept_id")

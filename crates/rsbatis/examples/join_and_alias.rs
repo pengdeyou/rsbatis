@@ -34,7 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "#,
     )?;
 
-    let rows: Vec<(User, Order)> = db.fetch_all(&select! {
+    let rows: Vec<(User, Order)> = db.all(&select! {
         User as u join Order as o on o.user_id == u.id
         where u.id == 1 order_by o.amount desc
     })?;
@@ -52,7 +52,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         user_id: Option<i64>,
         amount: Option<i64>,
     }
-    let left: Vec<(User, OrderOpt)> = db.fetch_all(&select! {
+    let left: Vec<(User, OrderOpt)> = db.all(&select! {
         User as u left_join OrderOpt as o on o.user_id == u.id
     })?;
     assert_eq!(left.len(), 3); // 2 + 1 重复父行：LEFT JOIN 不去重，去重是关系加载的职责

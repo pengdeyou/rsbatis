@@ -36,7 +36,7 @@ fn session() -> Option<Session<MySqlDriver>> {
 }
 
 fn load(db: &mut Session<MySqlDriver>) -> Vec<User> {
-    db.fetch_all(rsbatis::select! { User order_by User.id asc })
+    db.all(rsbatis::select! { User order_by User.id asc })
         .expect("回读")
 }
 

@@ -34,7 +34,7 @@ fn seeded() -> Option<Session<MySqlDriver>> {
 }
 
 fn names(db: &mut Session<MySqlDriver>, stmt: SelectStmt) -> Vec<String> {
-    db.fetch_all::<User>(&stmt.build(db.dialect()))
+    db.all::<User>(&stmt.build(db.dialect()))
         .expect("查用户")
         .into_iter()
         .map(|u| u.name)
@@ -93,7 +93,7 @@ fn derived_table_count_on_mysql() {
         .filter(Column::<i32>::new("v_dv_users", "age").ge(20_i32));
     let count_sql = SelectStmt::from_subquery(&inner, "t").build_count(db.dialect());
     let row = db
-        .fetch_one(&count_sql)
+        .first(&count_sql)
         .expect("MySQL 查询失败")
         .expect("COUNT 必须有一行");
     let n: i64 = row.get(0).expect("取计数");
@@ -127,7 +127,7 @@ fn derived_table_computed_column_on_mysql() {
         user_id: i64,
     }
     let rows = db
-        .fetch_all::<UserIdOnly>(&outer.build(db.dialect()))
+        .all::<UserIdOnly>(&outer.build(db.dialect()))
         .expect("查派生表");
     assert_eq!(
         vec![1_i64],
@@ -161,7 +161,7 @@ fn join_derived_table_on_mysql() {
         name: String,
     }
     let rows = db
-        .fetch_all::<NameOnly>(&stmt.build(db.dialect()))
+        .all::<NameOnly>(&stmt.build(db.dialect()))
         .expect("JOIN 派生表查询失败");
     assert_eq!(
         vec!["a".to_string()],
@@ -198,7 +198,7 @@ fn join_derived_table_param_order_on_mysql() {
         name: String,
     }
     let rows = db
-        .fetch_all::<NameOnly>(&stmt.build(db.dialect()))
+        .all::<NameOnly>(&stmt.build(db.dialect()))
         .expect("查询失败");
     assert!(rows.is_empty(), "参数错位会在这里露馅");
 }

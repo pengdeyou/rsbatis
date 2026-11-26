@@ -34,19 +34,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "#,
     )?;
 
-    let users: Vec<User> = db.fetch_all(&rsbatis::select! { User order_by User.id asc })?;
+    let users: Vec<User> = db.all(&rsbatis::select! { User order_by User.id asc })?;
 
     // 一对多：无论父有多少个，子表只查一次（IN 查询）
     let rel = HasMany::new(Post::user_id(), |p: &Post| p.user_id);
-    let posts: Vec<Vec<Post>> = db.load_has_many(&rel, &users, |u| u.id)?;
+    let posts: Vec<Vec<Post>> = db.has_many(&rel, &users, |u| u.id)?;
     assert_eq!(posts.len(), 3);
     assert_eq!(posts[0].len(), 2); // 张三
     assert_eq!(posts[2].len(), 0); // 王五没有文章，给空 Vec 而不是报错
 
     // 多对一：缺失的父给 None（而不是丢弃这个子，也不是 panic）
-    let all_posts: Vec<Post> = db.fetch_all(&rsbatis::select! { Post })?;
+    let all_posts: Vec<Post> = db.all(&rsbatis::select! { Post })?;
     let rel = BelongsTo::new(Post::user_id(), User::id(), |u: &User| u.id);
-    let authors: Vec<Option<User>> = db.load_belongs_to(&rel, &all_posts, |p| p.user_id)?;
+    let authors: Vec<Option<User>> = db.belongs_to(&rel, &all_posts, |p| p.user_id)?;
     assert_eq!(authors.iter().filter(|a| a.is_some()).count(), 3);
 
     // 同一个父被多个子引用时必须都拿到它——这条曾经因为用了 remove 而让第二个子拿到 None

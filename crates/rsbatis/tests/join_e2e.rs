@@ -46,7 +46,7 @@ fn setup() -> Session<SqliteDriver> {
 fn inner_join_with_macro_syntax() {
     let mut db = setup();
     let rows: Vec<(User, Order)> = db
-        .fetch_all(select! {
+        .all(select! {
             User join Order on Order.user_id == User.id
             where Order.amount >= 100
             order_by Order.id asc
@@ -68,7 +68,7 @@ fn left_join_yields_none_for_missing_side() {
             .build(Dialect::Sqlite);
     assert!(sql.text.contains("LEFT JOIN"), "{}", sql.text);
 
-    let rows: Vec<(User, OrderOpt)> = db.fetch_all(&sql).expect("left join");
+    let rows: Vec<(User, OrderOpt)> = db.all(&sql).expect("left join");
     // 张三有 3 个订单 -> 3 行；李四没有 -> 1 行（右表全 NULL）。共 4 行。
     assert_eq!(4, rows.len(), "一个用户多单会展开成多行，这是 SQL 语义本身");
     assert!(
@@ -95,7 +95,7 @@ fn three_table_join() {
     }
 
     let rows: Vec<(User, Order, Item)> = db
-        .fetch_all(select! {
+        .all(select! {
             User join Order on Order.user_id == User.id
             join Item on Item.order_id == Order.id
             where Order.amount == 150
@@ -110,7 +110,7 @@ fn three_table_join() {
 #[test]
 fn self_join_is_rejected_instead_of_returning_wrong_data() {
     let mut db = setup();
-    match db.fetch_all::<(User, User)>(select::<User>()) {
+    match db.all::<(User, User)>(select::<User>()) {
         Ok(_) => panic!("自连接必须拒绝，否则两张表的列别名完全重复"),
         Err(e) => {
             assert_eq!(ErrorKind::Unsupported, e.kind);

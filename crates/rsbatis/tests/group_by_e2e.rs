@@ -45,7 +45,7 @@ fn group_by_counts_rows_per_user() {
         .column_expr(Expr::count_star().as_("cnt"))
         .group_by(Expr::Col("gb_orders", "user_id"))
         .order_by(Expr::Col("gb_orders", "user_id"), rsbatis::Order::Asc);
-    let rows: Vec<UserCount> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<UserCount> = db.all(stmt.build(db.dialect())).unwrap();
     assert_eq!(
         vec![
             UserCount { user_id: 1, cnt: 2 },
@@ -63,7 +63,7 @@ fn having_filters_groups() {
         .column_expr(Expr::count_star().as_("cnt"))
         .group_by(Expr::Col("gb_orders", "user_id"))
         .having(Expr::cmp(BinOp::Gt, Expr::count_star(), Expr::lit(1_i64)));
-    let rows: Vec<UserCount> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<UserCount> = db.all(stmt.build(db.dialect())).unwrap();
     assert_eq!(vec![UserCount { user_id: 1, cnt: 2 }], rows);
 }
 
@@ -85,7 +85,7 @@ fn sum_with_having() {
             Expr::sum(Expr::Col("gb_orders", "amount")),
             Expr::lit(150_i64),
         ));
-    let rows: Vec<UserSum> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<UserSum> = db.all(stmt.build(db.dialect())).unwrap();
     // a=300 满足，b=50 不满足
     assert_eq!(
         vec![UserSum {
@@ -120,7 +120,7 @@ fn group_by_with_join() {
         name: String,
         cnt: i64,
     }
-    let rows: Vec<NameCount> = db.fetch_all(stmt.build(db.dialect())).unwrap();
+    let rows: Vec<NameCount> = db.all(stmt.build(db.dialect())).unwrap();
     // LEFT JOIN 下 c 也会有一行（全 NULL 的订单侧），COUNT(*) 数是 1；
     // 想数"真实订单"应用 COUNT(订单列)。这里断言 COUNT(*) 的真实行为。
     assert_eq!(
