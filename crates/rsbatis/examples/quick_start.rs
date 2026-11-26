@@ -11,7 +11,7 @@ use rsbatis::{insert, select, where_, Dialect, Entity, FromRow, Session, SqliteD
 pub struct User {
     pub id: i64,
     pub name: String,
-    pub age: Option<i32>, // 可空列；col_age() 仍是 Column<i32>
+    pub age: Option<i32>, // 可空列；age() 仍是 Column<i32>
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -23,8 +23,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for (name, age) in [("张三", 20), ("李四", 17), ("王五", 30)] {
         db.execute(
             insert::<User>()
-                .set(User::col_name(), name)
-                .set(User::col_age(), age)
+                .set(User::name(), name)
+                .set(User::age(), age)
                 .build(Dialect::Sqlite),
         )?;
     }

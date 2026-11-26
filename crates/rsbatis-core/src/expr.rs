@@ -344,7 +344,7 @@ impl Expr {
         Expr::Exists(Box::new(sub.clone()))
     }
 
-    /// `expr IN (subquery)`。`expr` 通常是外层表的列（`User::col_id().expr()`）。
+    /// `expr IN (subquery)`。`expr` 通常是外层表的列（`User::id().expr()`）。
     pub fn in_subquery(expr: Expr, sub: &crate::stmt::SelectStmt) -> Expr {
         Expr::InSubquery {
             expr: Box::new(expr),

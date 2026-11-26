@@ -48,14 +48,14 @@ fn datetime_roundtrip_on_real_mysql() {
 
     db.execute(
         insert::<Event>()
-            .set(Event::col_name(), "早")
-            .set(Event::col_created(), early),
+            .set(Event::name(), "早")
+            .set(Event::created(), early),
     )
     .unwrap();
     db.execute(
         insert::<Event>()
-            .set(Event::col_name(), "晚")
-            .set(Event::col_created(), late),
+            .set(Event::name(), "晚")
+            .set(Event::created(), late),
     )
     .unwrap();
 

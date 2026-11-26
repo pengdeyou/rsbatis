@@ -10,10 +10,18 @@
 
 use rsbatis::{
     delete, insert, select, update, where_, BelongsTo, Dialect, Entity, FromRow, HasMany,
-    ManyToMany, PageRequest, Session, SqliteDriver,
+    HasOne, ManyToMany, PageRequest, Session, Snowflake, SqliteDriver,
 };
 
 // ---------- 实体定义 ----------
+
+#[derive(Entity, FromRow, Clone, Debug)]
+#[rsbatis(table = "events")]
+pub struct Event {
+    #[rsbatis(primary_key)]
+    pub id: i64,
+    pub name: String,
+}
 
 #[derive(Entity, FromRow, Clone, Debug)]
 #[rsbatis(table = "users")]
@@ -87,6 +95,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         CREATE TABLE "courses" (id INTEGER PRIMARY KEY, title TEXT NOT NULL);
         CREATE TABLE "enrollments" (id INTEGER PRIMARY KEY, student_id INTEGER NOT NULL, course_id INTEGER NOT NULL);
         CREATE TABLE "logs" (id INTEGER PRIMARY KEY AUTOINCREMENT, msg TEXT NOT NULL);
+        CREATE TABLE "events" (id INTEGER PRIMARY KEY, name TEXT NOT NULL);
         INSERT INTO "users" VALUES (1,'张三',20),(2,'李四',17),(3,'王五',30);
         INSERT INTO "orders" VALUES (1,1,100),(2,1,300),(3,2,50);
         INSERT INTO "students" VALUES (1,'学生甲'),(2,'学生乙');
@@ -106,7 +115,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ---------- 3. 分页 ----------
     // 先 COUNT(*) 再取当页；页号越界时不再发第二次查询，直接给空 items + 正确的 total
-    let stmt = select::<User>().order_by(User::col_id().expr(), rsbatis::Order::Asc);
+    let stmt = select::<User>().order_by(User::id().expr(), rsbatis::Order::Asc);
     let page: rsbatis::Page<User> = db.paginate(&stmt, PageRequest::new(1, 2))?;
     assert_eq!(page.total, 3);
     assert_eq!(page.items.len(), 2);
@@ -135,15 +144,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 方式 B：语句式（可写 NULL、可加 ON CONFLICT）
     db.execute(
         insert::<User>()
-            .set(User::col_name(), "孙八")
-            .set_null(User::col_age())
+            .set(User::name(), "孙八")
+            .set_null(User::age())
             .build(Dialect::Sqlite),
     )?;
 
     // ---------- 6. 更新（按主键） ----------
     db.execute(
         update::<User>()
-            .set(User::col_age(), 21)
+            .set(User::age(), 21)
             .where_(where_!(User.id == 1))
             .build(Dialect::Sqlite),
     )?;
@@ -151,7 +160,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ---------- 7. 更新（按条件，命中多行） ----------
     let affected = db.execute(
         update::<User>()
-            .set(User::col_age(), 18)
+            .set(User::age(), 18)
             .where_(where_!(User.age < 18))
             .build(Dialect::Sqlite),
     )?;
@@ -162,20 +171,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 按条件删除同理：delete::<User>().where_(where_!(User.age < 0))
 
     // ---------- 9. 一对一 ----------
-    // 没有has_one 类型：正向关系用 BelongsTo（多对一在只有一行时即一对一），
-    // 反向用 HasMany 再取第一个。懒加载不存在，加载永远是显式调用。
-    let rel = HasMany::new(Order::col_user_id(), |o: &Order| o.user_id);
-    let per_user: Vec<Vec<Order>> = db.load_has_many(&rel, &all, |u| u.id)?;
-    let first_order_of_user1 = per_user[0].first();
+    // 与一对多同一条 IN 查询，父侧只留一个：返回 Option<C>。
+    // 前提是数据本身就唯一——同一外键多行时，"取哪一条"由数据库返回顺序决定。
+    let rel = HasOne::new(Order::user_id(), |o: &Order| o.user_id);
+    let one_per_user: Vec<Option<Order>> = db.load_has_one(&rel, &all, |u| u.id)?;
+    assert!(one_per_user[2].is_none()); // 王五没有订单
 
     // ---------- 10. 一对多 ----------
     // 无论父有多少个，子表只查一次（IN 查询），不会 N+1
+    let rel = HasMany::new(Order::user_id(), |o: &Order| o.user_id);
+    let per_user: Vec<Vec<Order>> = db.load_has_many(&rel, &all, |u| u.id)?;
     assert_eq!(per_user[0].len(), 2); // 张三有两单
-    assert!(first_order_of_user1.is_some());
 
     // 反向：多对一
     let orders: Vec<Order> = db.fetch_all(&select! { Order })?;
-    let rel = BelongsTo::new(Order::col_user_id(), User::col_id(), |u: &User| u.id);
+    let rel = BelongsTo::new(Order::user_id(), User::id(), |u: &User| u.id);
     let authors: Vec<Option<User>> = db.load_belongs_to(&rel, &orders, |o| o.user_id)?;
     assert!(authors.iter().all(|a| a.is_some()));
 
@@ -183,9 +193,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 关联表、指向父的列、指向子的列、子表里被引用的列——四个都要给，写错只会静默查空
     let rel = ManyToMany::new(
         "enrollments",
-        Enrollment::col_student_id(),
-        Enrollment::col_course_id(),
-        Course::col_id(),
+        Enrollment::student_id(),
+        Enrollment::course_id(),
+        Course::id(),
         |c: &Course| c.id,
     );
     let students: Vec<Student> = db.fetch_all(&select! { Student order_by Student.id asc })?;
@@ -209,6 +219,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         where u.id <= 3
     })?;
     assert_eq!(left.len(), 4);
+
+    // ---------- 14. 雪花 id 主键 ----------
+    // id 在 INSERT 之前就是确定值：主键写成 i64（不是 Option），也不需要 RETURNING
+    let sf = Snowflake::global();
+    let e1 = Event { id: sf.next()?, name: "created".into() };
+    let e2 = Event { id: sf.next()?, name: "updated".into() };
+    assert!(e2.id > e1.id);
+    db.add(&e1)?;
+    db.add(&e2)?;
+
+    let e2_id = e2.id; // select! 里只能引用实体列，取到本地变量再比较
+    let back: Event = db
+        .fetch_one_as(&select! { Event where Event.id == e2_id })?
+        .expect("刚插入的行应该查得到");
+    assert_eq!(back.name, "updated");
+    assert_eq!(Snowflake::parse(e2.id).1, sf.node()); // 节点 id 就在 id 里
 
     println!("all queries OK");
     Ok(())

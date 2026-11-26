@@ -37,7 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let users: Vec<User> = db.fetch_all(&rsbatis::select! { User order_by User.id asc })?;
 
     // 一对多：无论父有多少个，子表只查一次（IN 查询）
-    let rel = HasMany::new(Post::col_user_id(), |p: &Post| p.user_id);
+    let rel = HasMany::new(Post::user_id(), |p: &Post| p.user_id);
     let posts: Vec<Vec<Post>> = db.load_has_many(&rel, &users, |u| u.id)?;
     assert_eq!(posts.len(), 3);
     assert_eq!(posts[0].len(), 2); // 张三
@@ -45,7 +45,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 多对一：缺失的父给 None（而不是丢弃这个子，也不是 panic）
     let all_posts: Vec<Post> = db.fetch_all(&rsbatis::select! { Post })?;
-    let rel = BelongsTo::new(Post::col_user_id(), User::col_id(), |u: &User| u.id);
+    let rel = BelongsTo::new(Post::user_id(), User::id(), |u: &User| u.id);
     let authors: Vec<Option<User>> = db.load_belongs_to(&rel, &all_posts, |p| p.user_id)?;
     assert_eq!(authors.iter().filter(|a| a.is_some()).count(), 3);
 

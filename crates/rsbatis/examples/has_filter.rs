@@ -1,7 +1,7 @@
 
 //! 关系过滤：把"有没有子行"直接当 WHERE 条件。
 //!
-//! SQLAlchemy 是 `User.has(Post)`；这里是 `rel.exists_filter(User::col_id())`，
+//! SQLAlchemy 是 `User.has(Post)`；这里是 `rel.exists_filter(User::id())`，
 //! 产出一个 `Expr` 塞进 `where_`。
 //!
 //! 运行：`cargo run -p rsbatis --features sqlite --example has_filter`
@@ -43,12 +43,12 @@ fn main() {
     )
     .unwrap();
 
-    let rel = HasMany::<Article>::new(Article::col_author_id(), |a| a.author_id);
+    let rel = HasMany::<Article>::new(Article::author_id(), |a| a.author_id);
 
     // 1) 写过文章的作者
     let stmt = SelectStmt::new("author")
         .column("name")
-        .and_where(rel.exists_filter(Author::col_id()))
+        .and_where(rel.exists_filter(Author::id()))
         .order_by(Expr::bare_col("name"), SortOrder::Asc);
     println!("SQL: {}", stmt.build(db.dialect()).text);
     let rows: Vec<NameRow> = db.fetch_all(stmt.build(db.dialect())).unwrap();
@@ -57,13 +57,13 @@ fn main() {
     // 2) 一篇都没写的作者
     let stmt = SelectStmt::new("author")
         .column("name")
-        .and_where(rel.not_exists_filter(Author::col_id()))
+        .and_where(rel.not_exists_filter(Author::id()))
         .order_by(Expr::bare_col("name"), SortOrder::Asc);
     let rows: Vec<NameRow> = db.fetch_all(stmt.build(db.dialect())).unwrap();
     println!("一篇文章都没有: {:?}\n", rows.iter().map(|r| r.name.as_str()).collect::<Vec<_>>());
 
     // 3) 只算"已发布"：给子查询叠加条件
-    let mut sub = rel.exists_sub(Author::col_id());
+    let mut sub = rel.exists_sub(Author::id());
     sub = sub.and_where(Expr::cmp(
         BinOp::Eq,
         Expr::col("article", "published"),

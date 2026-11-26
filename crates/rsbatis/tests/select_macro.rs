@@ -75,7 +75,7 @@ fn equivalent_to_builder_chain() {
         select! { User where User.age >= 18 order_by User.age desc limit 10 }.build(Dialect::MySql);
     let builder_sql = select::<User>()
         .where_(where_!(User.age >= 18))
-        .order_by(User::col_age().expr(), rsbatis::Order::Desc)
+        .order_by(User::age().expr(), rsbatis::Order::Desc)
         .limit(10)
         .build(Dialect::MySql);
     assert_eq!(builder_sql.text, macro_sql.text);

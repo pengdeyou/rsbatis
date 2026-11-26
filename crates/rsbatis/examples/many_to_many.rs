@@ -43,9 +43,9 @@ fn main() {
 
     let rel = ManyToMany::<Course>::new(
         "enroll",
-        Enroll::col_student_id(),
-        Enroll::col_course_id(),
-        Course::col_id(),
+        Enroll::student_id(),
+        Enroll::course_id(),
+        Course::id(),
         |c| c.id,
     );
 
@@ -68,9 +68,9 @@ fn main() {
     // 反向：一门课被哪些人选了 —— 把关联表的两列对调，同一个 API
     let rev = ManyToMany::<Student>::new(
         "enroll",
-        Enroll::col_course_id(),
-        Enroll::col_student_id(),
-        Student::col_id(),
+        Enroll::course_id(),
+        Enroll::student_id(),
+        Student::id(),
         |s| s.id,
     );
     let courses: Vec<Course> = db

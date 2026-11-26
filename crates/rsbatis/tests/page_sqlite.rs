@@ -76,8 +76,8 @@ fn seeded() -> Session<Counting<SqliteDriver>> {
         };
         db.execute(
             insert::<User>()
-                .set(User::col_name(), name)
-                .set(User::col_age(), 20 + i)
+                .set(User::name(), name)
+                .set(User::age(), 20 + i)
                 .build(Dialect::Sqlite),
         )
         .expect("插入");

@@ -59,7 +59,7 @@ pub use rsbatis_driver::set_mysql_socket_hooks;
 // Session / 事务 / FromRow：开了任意驱动就能用
 #[cfg(feature = "orm")]
 pub use rsbatis_orm::{
-    BelongsTo, FromRow, HasMany, ManyToMany, Page, PageRequest, Pool, PooledConn, Session,
+    BelongsTo, FromRow, HasMany, HasOne, ManyToMany, Page, PageRequest, Pool, PooledConn, Session,
     Transaction,
 };
 

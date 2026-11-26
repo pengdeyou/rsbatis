@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="docs/rsbatis-logo.svg" alt="rsbatis" width="200">
-</p>
-
 # rsbatis
 
 A SQLAlchemy-style ORM for Rust — `select! { User where User.age >= 18 }` instead of
@@ -18,7 +14,7 @@ language. The only way to get SQLAlchemy-like syntax is to rewrite the tokens **
 type-checks them — which is what this project does with procedural macros.
 
 The macro rewrites and nothing else. Type checking still belongs to `rustc`, so a misspelled
-column is `E0599` with rustc's own "did you mean `col_age`?" hint, and a wrong value type is
+column is `E0599` with rustc's own "did you mean `age`?" hint, and a wrong value type is
 `E0277` on the literal you wrote.
 
 ## Defining an entity
@@ -32,7 +28,7 @@ pub struct User {
     #[rsbatis(primary_key)]
     pub id: i64,
     pub name: String,
-    pub age: Option<i32>,   // nullable column; col_age() is still Column<i32>
+    pub age: Option<i32>,   // nullable column; age() is still Column<i32>
 }
 ```
 
@@ -43,7 +39,9 @@ pub struct User {
 - **Auto-increment keys are `Option<i64>`, not `i64`.** `None` means "let the database assign it";
   `Some(v)` inserts `v` explicitly. With a bare `i64` you must always supply a value, and `0`
   will be inserted as a real key.
-- Nullable columns are `Option<T>`; the generated `col_x()` is still `Column<T>`, so predicates
+- Nullable columns are `Option<T>`; the generated `x()` is still `Column<T>`, so predicates
+- The column accessor takes the field name verbatim (`User::age()`), so a field that
+  shadows an `Entity`/`FromRow` item (`table`, `from_row`, ...) is rejected at derive time
   never have to deal with `Option`.
 - Field types are checked against a whitelist (`i8..i64`, `u8..u64`, `f32`, `f64`, `bool`,
   `String`, `Vec<u8>`, `NaiveDateTime` with the `chrono` feature). Anything else is a compile
@@ -51,7 +49,7 @@ pub struct User {
 - `#[rsbatis(column = "...")]` overrides a column name; there is no "ignore this field" yet, so
   the struct must mirror the table.
 
-`Entity` generates the column accessors (`User::col_id()`, `User::col_name()`, …).
+`Entity` generates the column accessors (`User::id()`, `User::name()`, …).
 `FromRow` generates the row decoder. Both are needed: the first feeds `where_!` and the builders,
 the second feeds `fetch_all` / `fetch_one_as` / `paginate`.
 
@@ -78,7 +76,7 @@ let all: Vec<User> = db.fetch_all(&select! { User order_by User.id asc })?;
 ### Pagination
 
 ```rust
-let stmt = select::<User>().order_by(User::col_id().expr(), rsbatis::Order::Asc);
+let stmt = select::<User>().order_by(User::id().expr(), rsbatis::Order::Asc);
 let page: rsbatis::Page<User> = db.paginate(&stmt, PageRequest::new(1, 2))?;  // page 1, size 2
 ```
 
@@ -120,8 +118,8 @@ let id: i64 = db.insert_one_id(&Log { id: None, msg: "started".into() })?;
 // statement form: write NULL explicitly, or add ON CONFLICT
 db.execute(
     insert::<User>()
-        .set(User::col_name(), "孙八")
-        .set_null(User::col_age())
+        .set(User::name(), "孙八")
+        .set_null(User::age())
         .build(Dialect::Sqlite),
 )?;
 ```
@@ -137,7 +135,7 @@ silently returns a stale id fails loudly instead of handing back a plausible-loo
 // by primary key
 db.execute(
     update::<User>()
-        .set(User::col_age(), 21)
+        .set(User::age(), 21)
         .where_(where_!(User.id == 1))
         .build(Dialect::Sqlite),
 )?;
@@ -145,7 +143,7 @@ db.execute(
 // by condition, hitting several rows — the return value is the affected count
 let affected = db.execute(
     update::<User>()
-        .set(User::col_age(), 18)
+        .set(User::age(), 18)
         .where_(where_!(User.age < 18))
         .build(Dialect::Sqlite),
 )?;
@@ -203,7 +201,7 @@ promised in prose.
 ### One-to-many
 
 ```rust
-let rel = HasMany::new(Order::col_user_id(), |o: &Order| o.user_id);
+let rel = HasMany::new(Order::user_id(), |o: &Order| o.user_id);
 let per_user: Vec<Vec<Order>> = db.load_has_many(&rel, &users, |u| u.id)?;
 ```
 
@@ -212,7 +210,7 @@ Parents with no children get an empty `Vec`, not an error.
 ### Many-to-one
 
 ```rust
-let rel = BelongsTo::new(Order::col_user_id(), User::col_id(), |u: &User| u.id);
+let rel = BelongsTo::new(Order::user_id(), User::id(), |u: &User| u.id);
 let authors: Vec<Option<User>> = db.load_belongs_to(&rel, &orders, |o| o.user_id)?;
 ```
 
@@ -220,23 +218,30 @@ A missing parent yields `None`; the child is never dropped and the call never pa
 
 ### One-to-one
 
-There is no dedicated `HasOne`. A one-to-one is either `BelongsTo` when only one row can match,
-or `HasMany` plus `.first()` on the parent side:
+`HasOne` returns `Option<C>` per parent. It costs the same as `load_has_many` — one `IN` query
+for the whole batch — because SQL cannot `LIMIT 1` per parent in a single round trip; the
+"first one" is chosen in memory.
 
 ```rust
-let rel = HasMany::new(Order::col_user_id(), |o: &Order| o.user_id);
-let per_user = db.load_has_many(&rel, &users, |u| u.id)?;
-let first_order = per_user[0].first();
+let rel = HasOne::new(Order::user_id(), |o: &Order| o.user_id);
+let order_per_user: Vec<Option<Order>> = db.load_has_one(&rel, &users, |u| u.id)?;
 ```
+
+It relies on the data actually being one-to-one. If a foreign key holds several rows, which
+one you get is decided by the database's row order — that is a silent, unspecified answer.
+When you need "the specific one of several", write an explicit `select!` with a filter instead
+of using this descriptor.
+
+Forward direction, when the parent may or may not exist, uses `BelongsTo`.
 
 ### Many-to-many
 
 ```rust
 let rel = ManyToMany::new(
     "enrollments",                    // link table
-    Enrollment::col_student_id(),     // link column pointing at the parent
-    Enrollment::col_course_id(),      // link column pointing at the child
-    Course::col_id(),                 // column in the child table being referenced
+    Enrollment::student_id(),     // link column pointing at the parent
+    Enrollment::course_id(),      // link column pointing at the child
+    Course::id(),                 // column in the child table being referenced
     |c: &Course| c.id,
 );
 let courses: Vec<Vec<Course>> = db.load_many_to_many(&rel, &students, |s| s.id)?;
@@ -245,6 +250,52 @@ let courses: Vec<Vec<Course>> = db.load_many_to_many(&rel, &students, |s| s.id)?
 All four columns are required on purpose. Three of them live in two different tables, so a wrong
 one does not fail — it silently returns empty sets. The loader validates the table names before
 querying instead of trusting the descriptor.
+
+## Generated ids (snowflake)
+
+A database sequence cannot give you the id before the `INSERT`: you either pay a second
+round trip (`RETURNING`) or model the key as `Option<i64>`. `Snowflake` moves uniqueness
+to the application, so the key is a plain `i64` set before the write — and it is roughly
+time-ordered, which keeps B-tree inserts at the right edge of the index.
+
+```text
+63      62                22        12         0
++--------+-----------------+---------+----------+
+| 0 (sign)| timestamp (41) | node(10) | seq (12) |
++--------+-----------------+---------+----------+
+```
+
+41 bits of milliseconds last until 2109, 10 bits give 1024 instances, 12 bits give
+4096 ids per millisecond per instance (~4.1M/s single node).
+
+```rust
+let sf = Snowflake::global();          // node id: RSBATIS_NODE_ID, else hostname+pid hash
+let row = Event { id: sf.next()?, name: "created".into() };
+db.add(&row)?;                          // id is i64 — no RETURNING, no Option
+```
+
+The generator is lock-free: timestamp, node and sequence live in one `u64` updated by a
+single CAS, so contention degrades to "retry with the next sequence number" rather than
+to a queue behind a mutex.
+
+Three things it does not solve for you:
+
+1. **Node ids must be unique.** `global()` falls back to a `hostname + pid` hash, which
+   only prevents the worst default (every instance being node 0). In production set
+   `RSBATIS_NODE_ID` explicitly per replica — two machines claiming node 3 will collide
+   inside the same millisecond.
+2. **Clock going backwards.** A backward jump of ≤5 ms is absorbed by waiting for the
+   previously issued millisecond; a larger jump returns
+   `IdError::ClockMovedBackwards` instead of guessing. A failed insert is better than a
+   duplicate primary key.
+3. **`i64` above 2^53.** These ids are 19 decimal digits and lose precision in
+   JavaScript. Serialize them as strings in JSON — that is the tax every snowflake
+   scheme pays, not a defect of this one.
+
+Why not the alternatives: auto-increment needs `Option<i64>` or a second round trip and
+breaks across sharded tables; UUIDv4 is random (bad for index locality) and 16 bytes;
+UUIDv7 is time-ordered and easier, but still 16 bytes and needs `BINARY(16)` handling in
+MySQL. If you are already on `i64` keys, snowflake is the shape that costs nothing extra.
 
 ## Crates
 

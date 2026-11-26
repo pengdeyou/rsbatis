@@ -33,15 +33,15 @@ fn table_columns_and_nullable() {
     assert_eq!(&["age"], <User as Entity>::NULLABLE, "只有 Option 字段可空");
 
     // 同一张表、同一列，从两个地方取到的 Column 必须相等
-    assert_eq!("age", User::col_age().name());
-    assert_eq!("users", User::col_age().table());
+    assert_eq!("age", User::age().name());
+    assert_eq!("users", User::age().table());
 }
 
 #[test]
 fn column_attribute_overrides_field_name() {
     assert_eq!("sys_config", <SysConfig as Entity>::TABLE);
     assert_eq!(&["cfg_key", "value"], <SysConfig as Entity>::COLUMNS);
-    assert_eq!("cfg_key", SysConfig::col_key().name());
+    assert_eq!("cfg_key", SysConfig::key().name());
     assert!(<SysConfig as Entity>::NULLABLE.is_empty());
 }
 
@@ -75,8 +75,8 @@ fn derived_columns_work_with_where_macro() {
 #[test]
 fn derived_columns_usable_in_dml() {
     let ins = rsbatis::insert::<User>()
-        .set(User::col_name(), "张三")
-        .set_null(User::col_age())
+        .set(User::name(), "张三")
+        .set_null(User::age())
         .build(Dialect::MySql);
     assert_eq!(
         "INSERT INTO `users` (`name`, `age`) VALUES (?, ?)",
@@ -86,7 +86,7 @@ fn derived_columns_usable_in_dml() {
     assert!(matches!(ins.params[1], rsbatis::Value::Null));
 
     let upd = rsbatis::update::<User>()
-        .set(User::col_age(), 21)
+        .set(User::age(), 21)
         .where_(where_!(User.id == 1))
         .build(Dialect::Sqlite);
     assert_eq!(r#"UPDATE "users" SET "age" = ? WHERE "id" = ?"#, upd.text);

@@ -27,8 +27,8 @@ fn seed(db: &mut Session<SqliteDriver>) {
     for (n, a) in [("张三", 20), ("李四", 17), ("王五", 30)] {
         db.execute(
             insert::<User>()
-                .set(User::col_name(), n)
-                .set(User::col_age(), a)
+                .set(User::name(), n)
+                .set(User::age(), a)
                 .build(Dialect::Sqlite),
         )
         .unwrap();
@@ -52,8 +52,8 @@ fn session_crud_to_models() {
     // 读成非 Option 应报 TypeMismatch（NULL 行）
     db.execute(
         insert::<User>()
-            .set_null(User::col_age())
-            .set(User::col_name(), "无年龄")
+            .set_null(User::age())
+            .set(User::name(), "无年龄")
             .build(Dialect::Sqlite),
     )
     .unwrap();
@@ -66,8 +66,8 @@ fn session_crud_to_models() {
         1,
         db.execute(
             update::<User>()
-                .set(User::col_age(), 21)
-                .where_(User::col_name().eq("张三"))
+                .set(User::age(), 21)
+                .where_(User::name().eq("张三"))
                 .build(Dialect::Sqlite)
         )
         .unwrap()
@@ -98,7 +98,7 @@ fn transaction_commit_and_drop_rollback() {
     let mut tx = db.transaction().unwrap();
     tx.execute(
         insert::<User>()
-            .set(User::col_name(), "事务内")
+            .set(User::name(), "事务内")
             .build(Dialect::Sqlite),
     )
     .unwrap();
@@ -116,7 +116,7 @@ fn transaction_commit_and_drop_rollback() {
         let mut tx = db.transaction().unwrap();
         tx.execute(
             insert::<User>()
-                .set(User::col_name(), "将被回滚")
+                .set(User::name(), "将被回滚")
                 .build(Dialect::Sqlite),
         )
         .unwrap();
@@ -135,7 +135,7 @@ fn transaction_commit_and_drop_rollback() {
     let mut tx = db.transaction().unwrap();
     tx.execute(
         insert::<User>()
-            .set(User::col_name(), "显式回滚")
+            .set(User::name(), "显式回滚")
             .build(Dialect::Sqlite),
     )
     .unwrap();

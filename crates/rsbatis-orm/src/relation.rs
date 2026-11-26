@@ -57,7 +57,7 @@ impl<C> HasMany<C> {
     ///
     /// ```ignore
     /// // 有文章的用户
-    /// let stmt = select::<User>().where_(Post::user().exists_filter(User::col_id()));
+    /// let stmt = select::<User>().where_(Post::user().exists_filter(User::id()));
     /// ```
     ///
     /// `parent_col` 必须是**外层**查询里那张父表的列。外层用了别名时记得
@@ -84,6 +84,31 @@ impl<C> HasMany<C> {
 }
 
 /// 多对一：子持有唯一父，子表里有一列指向父。
+/// 一对一的描述符。
+///
+/// 与 `HasMany` 的区别只在返回类型：父侧拿 `Option<C>` 而不是 `Vec<C>`。查询次数据
+/// 相同——都是**一条 `IN` 查询**把整批父的子行取回来。SQL 里没法对每个父分别
+/// `LIMIT 1`，所以"取第一条"发生在内存里。
+///
+/// 这条约束必须由使用者保证：**数据本身是唯一的一对一**。如果表里同一个外键值
+/// 出现多行，这里返回哪一行取决于数据库的返回顺序，是静默的不确定结果——需要
+/// "多条里挑特定一条"的场景请显式用 `select!` 加条件查询，别用这个描述符。
+#[derive(Clone, Copy)]
+pub struct HasOne<C> {
+    fk: Column<i64>,
+    key_of: fn(&C) -> i64,
+}
+
+impl<C> HasOne<C> {
+    pub fn new(fk: Column<i64>, key_of: fn(&C) -> i64) -> Self {
+        Self { fk, key_of }
+    }
+
+    pub fn fk(&self) -> Column<i64> {
+        self.fk
+    }
+}
+
 pub struct BelongsTo<P> {
     fk: Column<i64>,
     /// 父表上被引用的列（通常是主键）。
@@ -124,8 +149,8 @@ impl<P> BelongsTo<P> {
 /// （除了一长串 `JOIN`，那要求把子表每一列都枚举出来做别名，`COLUMNS` 为空时就做不了）。
 ///
 /// ```ignore
-/// let rel = ManyToMany::<Course>::new("enroll", Student::col_id(), Course::col_id(),
-///                                     Course::col_id(), |c| c.id);
+/// let rel = ManyToMany::<Course>::new("enroll", Student::id(), Course::id(),
+///                                     Course::id(), |c| c.id);
 /// let courses = db.load_many_to_many(&rel, &students, |s| s.id)?;
 /// ```
 pub struct ManyToMany<C> {
@@ -250,6 +275,39 @@ impl<D: Driver> Session<D> {
             .collect())
     }
 
+    /// 一对一预加载：与 `load_has_many` 同一条 `IN` 查询，父侧只留一个。
+    ///
+    /// 找不到子时给 `None`。同一个父在 `parents` 里出现两次时，两边拿到的是
+    /// **同一个** `Option<C>` 的克隆，不会出现"第一份有、第二份 None"。
+    pub fn load_has_one<C, P>(
+        &mut self,
+        rel: &HasOne<C>,
+        parents: &[P],
+        parent_key: impl Fn(&P) -> i64,
+    ) -> Result<Vec<Option<C>>, DriverError>
+    where
+        C: Entity + FromRow + Clone,
+    {
+        let keys = unique_keys(parents.iter().map(&parent_key));
+        if keys.is_empty() {
+            return Ok(parents.iter().map(|_| None).collect());
+        }
+
+        let rows: Vec<C> = self.fetch_all(select::<C>().where_(rel.fk.in_(keys)))?;
+
+        let mut buckets: HashMap<i64, C> = HashMap::new();
+        for row in rows {
+            // 先到先得：数据是一对一时只有一行；不是一对一的话，结果是确定的"第一条"，
+            // 但哪个"第一条"由数据库决定——文档里写明了，不假装它能挑。
+            buckets.entry((rel.key_of)(&row)).or_insert(row);
+        }
+
+        Ok(parents
+            .iter()
+            .map(|p| buckets.get(&parent_key(p)).cloned())
+            .collect())
+    }
+
     /// 多对一预加载：子已查出来后，用一条 `IN` 把父取回来。
     ///
     /// 找不到父时给 `None`。这不只是"外键为 NULL"——也包含外键指向一条已被删除的父，
@@ -303,7 +361,7 @@ impl<D: Driver> Session<D> {
         C: Entity + FromRow + Clone,
     {
         // 描述符里三个列名分属两张表，写错不会报错 —— 只会静默查出空集合。
-        // 这是我自己第一版就犯过的错：把 `Student::col_id()`（列名 `id`）当成
+        // 这是我自己第一版就犯过的错：把 `Student::id()`（列名 `id`）当成
         // `link_parent` 传进来，关联表里那列其实叫 `student_id`，渲染出
         // `WHERE "id" IN (…)` 去查一张没有 `id` 列的表。所以这里先校验表名。
         self.check_descriptor(rel)?;

@@ -48,13 +48,13 @@ fn seeded() -> Session<SqliteDriver> {
 
 fn rel() -> ManyToMany<Course> {
     // 前两个参数是**关联表**的列（student_id / course_id），第三个才是子表的列。
-    // 传成 `Student::col_id()` 会渲染出 `WHERE "id"` 去查没有 id 列的关联表 →
+    // 传成 `Student::id()` 会渲染出 `WHERE "id"` 去查没有 id 列的关联表 →
     // 静默查出空集合，所以 load 时会校验表名归属。
     ManyToMany::new(
         "m2m_enroll",
-        Enroll::col_student_id(),
-        Enroll::col_course_id(),
-        Course::col_id(),
+        Enroll::student_id(),
+        Enroll::course_id(),
+        Course::id(),
         |c| c.id,
     )
 }
@@ -155,9 +155,9 @@ fn reverse_direction_uses_same_descriptor_shape() {
     // 课程 → 学生：把关联表的两列对调即可，同一个 API 不用改
     let rev = ManyToMany::<Student>::new(
         "m2m_enroll",
-        Enroll::col_course_id(),
-        Enroll::col_student_id(),
-        Student::col_id(),
+        Enroll::course_id(),
+        Enroll::student_id(),
+        Student::id(),
         |s| s.id,
     );
     let courses: Vec<Course> = db
@@ -179,7 +179,7 @@ fn has_many_still_works_alongside() {
     // 同一张子表用 HasMany（子表里有父的列）走另一条路径，确认两个描述符不冲突
     let mut db = seeded();
     let ss = students(&mut db);
-    let hm = HasMany::<Enroll>::new(Enroll::col_student_id(), |e| e.student_id);
+    let hm = HasMany::<Enroll>::new(Enroll::student_id(), |e| e.student_id);
     let got = db.load_has_many(&hm, &ss, |s| s.id).unwrap();
     assert_eq!(vec![2, 1, 0], got.iter().map(|v| v.len()).collect::<Vec<_>>());
 }
@@ -191,9 +191,9 @@ fn wrong_link_column_is_rejected_instead_of_returning_empty() {
     // 故意把父表的主键当关联表的列传
     let bad = ManyToMany::<Course>::new(
         "m2m_enroll",
-        Student::col_id(),
-        Enroll::col_course_id(),
-        Course::col_id(),
+        Student::id(),
+        Enroll::course_id(),
+        Course::id(),
         |c| c.id,
     );
     let err = db.load_many_to_many(&bad, &ss, |s| s.id).unwrap_err();
@@ -211,9 +211,9 @@ fn wrong_child_column_is_rejected() {
     // child_col 给了关联表的列
     let bad = ManyToMany::<Course>::new(
         "m2m_enroll",
-        Enroll::col_student_id(),
-        Enroll::col_course_id(),
-        Enroll::col_course_id(),
+        Enroll::student_id(),
+        Enroll::course_id(),
+        Enroll::course_id(),
         |c| c.id,
     );
     let err = db.load_many_to_many(&bad, &ss, |s| s.id).unwrap_err();

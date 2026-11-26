@@ -106,17 +106,17 @@ fn do_nothing_mysql_is_real_no_op_and_keeps_data() {
     let Some(mut db) = session() else { return };
     db.execute(
         rsbatis::insert::<User>()
-            .set(User::col_id(), 5_i64)
-            .set(User::col_name(), "原值")
-            .set(User::col_age(), 9_i32),
+            .set(User::id(), 5_i64)
+            .set(User::name(), "原值")
+            .set(User::age(), 9_i32),
     )
     .expect("首次插入");
 
     // ON DUPLICATE KEY UPDATE `id` = `id`：冲突时什么都不做
     db.execute(
         rsbatis::insert::<User>()
-            .set(User::col_id(), 5_i64)
-            .set(User::col_name(), "被覆盖了就会有罪")
+            .set(User::id(), 5_i64)
+            .set(User::name(), "被覆盖了就会有罪")
             .on_conflict_do_nothing(),
     )
     .expect("do nothing 不应抛唯一键冲突");

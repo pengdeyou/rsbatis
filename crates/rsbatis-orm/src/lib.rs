@@ -27,5 +27,5 @@ mod session;
 pub use from_row::FromRow;
 pub use page::{Page, PageRequest};
 pub use pool::{Pool, PooledConn};
-pub use relation::{BelongsTo, HasMany, ManyToMany};
+pub use relation::{BelongsTo, HasMany, HasOne, ManyToMany};
 pub use session::{Session, Transaction};

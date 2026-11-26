@@ -37,14 +37,14 @@ fn roundtrip_keeps_microseconds_and_compares_as_time() {
 
     db.execute(
         insert::<Event>()
-            .set(Event::col_name(), "早")
-            .set(Event::col_created(), early),
+            .set(Event::name(), "早")
+            .set(Event::created(), early),
     )
     .unwrap();
     db.execute(
         insert::<Event>()
-            .set(Event::col_name(), "晚")
-            .set(Event::col_created(), late),
+            .set(Event::name(), "晚")
+            .set(Event::created(), late),
     )
     .unwrap();
 
@@ -67,8 +67,8 @@ fn roundtrip_keeps_microseconds_and_compares_as_time() {
     // 更新一个日期字段
     db.execute(
         rsbatis::update::<Event>()
-            .set(Event::col_created(), late)
-            .where_(Event::col_name().eq("早")),
+            .set(Event::created(), late)
+            .where_(Event::name().eq("早")),
     )
     .unwrap();
     let all2: Vec<Event> = db

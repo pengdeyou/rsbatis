@@ -6,7 +6,6 @@ rust-version = "1.80"
 description = "Query execution layer for rsbatis: a driver abstraction over SQLite and MySQL with runtime-shaped parameter binding."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/pengdeyou/rsbatis"
-homepage = "https://github.com/pengdeyou/rsbatis"
 keywords = ["orm", "sql", "driver", "database", "sqlite"]
 categories = ["database"]
 readme = "README.md"

@@ -24,12 +24,12 @@ struct Pst {
 
 /// 一对多描述符：子表 `v_post.user_id` 指向父，父键是 `U.id`
 fn posts_of() -> HasMany<Pst> {
-    HasMany::new(Pst::col_user_id(), |p: &Pst| p.user_id)
+    HasMany::new(Pst::user_id(), |p: &Pst| p.user_id)
 }
 
 /// 多对一描述符：父键是 `U.id`
 fn author_of() -> BelongsTo<U> {
-    BelongsTo::new(Pst::col_user_id(), U::col_id(), |u: &U| u.id)
+    BelongsTo::new(Pst::user_id(), U::id(), |u: &U| u.id)
 }
 
 /// 统计 `fetch` 次数的驱动包装。

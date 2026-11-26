@@ -21,11 +21,11 @@ struct RP {
 }
 
 fn posts_of() -> HasMany<RP> {
-    HasMany::new(RP::col_user_id(), |p: &RP| p.user_id)
+    HasMany::new(RP::user_id(), |p: &RP| p.user_id)
 }
 
 fn author_of() -> BelongsTo<RU> {
-    BelongsTo::new(RP::col_user_id(), RU::col_id(), |u: &RU| u.id)
+    BelongsTo::new(RP::user_id(), RU::id(), |u: &RU| u.id)
 }
 
 fn db() -> Option<Session<MySqlDriver>> {

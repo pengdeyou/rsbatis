@@ -37,8 +37,8 @@ fn seeded() -> Option<Session<MySqlDriver>> {
         };
         db.execute(
             insert::<User>()
-                .set(User::col_name(), name)
-                .set(User::col_age(), 20 + i)
+                .set(User::name(), name)
+                .set(User::age(), 20 + i)
                 .build(Dialect::MySql),
         )
         .expect("插入");

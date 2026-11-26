@@ -53,7 +53,7 @@ fn many_to_many_on_mariadb() {
         Some(d) => d,
         None => return,
     };
-    let rel = ManyToMany::<C>::new("m2m_e", E::col_s_id(), E::col_c_id(), C::col_id(), |c| c.id);
+    let rel = ManyToMany::<C>::new("m2m_e", E::s_id(), E::c_id(), C::id(), |c| c.id);
     let ss: Vec<S> = db
         .fetch_all(
             SelectStmt::new("m2m_s")
@@ -78,7 +78,7 @@ fn orphan_link_skipped_on_mariadb() {
     };
     db.execute_batch("INSERT INTO m2m_e (s_id, c_id) VALUES (1, 99);")
         .unwrap();
-    let rel = ManyToMany::<C>::new("m2m_e", E::col_s_id(), E::col_c_id(), C::col_id(), |c| c.id);
+    let rel = ManyToMany::<C>::new("m2m_e", E::s_id(), E::c_id(), C::id(), |c| c.id);
     let ss: Vec<S> = db
         .fetch_all(SelectStmt::new("m2m_s").column("id").column("name").build(db.dialect()))
         .unwrap();

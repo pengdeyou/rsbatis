@@ -93,7 +93,7 @@ impl<T> Column<T> {
         Expr::cmp(BinOp::Eq, self.expr(), other.expr())
     }
 
-    /// `本列 IN (子查询)`。例：`User::col_id().in_subquery(&orders)`。
+    /// `本列 IN (子查询)`。例：`User::id().in_subquery(&orders)`。
     pub fn in_subquery(self, sub: &crate::stmt::SelectStmt) -> Expr {
         Expr::in_subquery(self.expr(), sub)
     }

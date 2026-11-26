@@ -77,7 +77,7 @@ fn in_subquery_filters_by_related_table() {
     let sub = SelectStmt::new("sq_orders")
         .column("user_id")
         .where_(rsbatis::Column::<i64>::new("sq_orders", "amount").ge(100_i64));
-    let stmt = SelectStmt::for_entity::<User>().where_(User::col_id().in_subquery(&sub));
+    let stmt = SelectStmt::for_entity::<User>().where_(User::id().in_subquery(&sub));
     assert_eq!(vec!["a".to_string()], names(&mut session, stmt));
 }
 
@@ -89,7 +89,7 @@ fn not_in_subquery_excludes_and_includes_users_without_orders() {
     let sub = SelectStmt::new("sq_orders")
         .column("user_id")
         .where_(rsbatis::Column::<i64>::new("sq_orders", "amount").ge(100_i64));
-    let stmt = SelectStmt::for_entity::<User>().where_(User::col_id().not_in_subquery(&sub));
+    let stmt = SelectStmt::for_entity::<User>().where_(User::id().not_in_subquery(&sub));
     let mut got = names(&mut session, stmt);
     got.sort();
     assert_eq!(vec!["b".to_string(), "c".to_string()], got);
@@ -144,6 +144,6 @@ fn subquery_with_order_and_limit() {
             rsbatis::Order::Desc,
         )
         .limit(1);
-    let stmt = SelectStmt::for_entity::<User>().where_(User::col_id().in_subquery(&sub));
+    let stmt = SelectStmt::for_entity::<User>().where_(User::id().in_subquery(&sub));
     assert_eq!(vec!["a".to_string()], names(&mut session, stmt));
 }

@@ -6,7 +6,6 @@ rust-version = "1.80"
 description = "Session, transactions, connection pool, row mapping and eager-loading relations for rsbatis."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/pengdeyou/rsbatis"
-homepage = "https://github.com/pengdeyou/rsbatis"
 keywords = ["orm", "sql", "session", "database", "transaction"]
 categories = ["database"]
 readme = "README.md"

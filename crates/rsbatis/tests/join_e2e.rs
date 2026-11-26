@@ -124,7 +124,7 @@ fn join_condition_can_compare_columns_directly() {
     // builder 路径与宏路径必须产出一致的 SQL
     let macro_sql = select! { User join Order on Order.user_id == User.id }.build(Dialect::Sqlite);
     let builder_sql = select::<User>()
-        .join::<Order>(JoinKind::Inner, Order::col_user_id().eq_col(User::col_id()))
+        .join::<Order>(JoinKind::Inner, Order::user_id().eq_col(User::id()))
         .build(Dialect::Sqlite);
     assert_eq!(macro_sql.text, builder_sql.text);
     assert!(macro_sql.params.is_empty(), "列对列比较不产生参数");

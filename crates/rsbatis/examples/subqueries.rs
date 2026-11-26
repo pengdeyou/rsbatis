@@ -7,7 +7,7 @@
 //! ```
 //! 这里对应：
 //! ```ignore
-//! SelectStmt::for_entity::<User>().where_(User::col_id().in_subquery(&sub))
+//! SelectStmt::for_entity::<User>().where_(User::id().in_subquery(&sub))
 //! SelectStmt::for_entity::<User>().where_(Expr::exists(&sub))
 //! ```
 //! 差别只在写法风格：Rust 没有 `==` 重载，所以比较用 `Expr::cmp` / `Column::eq`。
@@ -49,7 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .column("user_id")
         .where_(Column::<i64>::new("orders", "amount").ge(100_i64));
 
-    let stmt = SelectStmt::for_entity::<User>().where_(User::col_id().in_subquery(&big_buyers));
+    let stmt = SelectStmt::for_entity::<User>().where_(User::id().in_subquery(&big_buyers));
     let sql = stmt.build(db.dialect());
     println!("IN 子查询 SQL:\n  {}\n", sql.text);
     let users: Vec<User> = db.fetch_all(&sql)?;
@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // ── 2. NOT IN：没买过大额的（含从没下过单的人）──
-    let stmt = SelectStmt::for_entity::<User>().where_(User::col_id().not_in_subquery(&big_buyers));
+    let stmt = SelectStmt::for_entity::<User>().where_(User::id().not_in_subquery(&big_buyers));
     let users: Vec<User> = db.fetch_all(stmt.build(db.dialect()))?;
     println!(
         "NOT IN 结果: {:?}\n",
@@ -92,7 +92,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ── 4. 子查询里带 LIMIT：MySQL/MariaDB 会拒绝，我们提前告警 ──
     let limited = SelectStmt::new("orders").column("user_id").limit(1);
     let sql = SelectStmt::for_entity::<User>()
-        .where_(User::col_id().in_subquery(&limited))
+        .where_(User::id().in_subquery(&limited))
         .build(rsbatis::Dialect::MySql);
     if !sql.warnings.is_empty() {
         println!("MySQL 侧提示: {}", sql.warnings[0]);

@@ -123,8 +123,8 @@ fn add_explicit_null_still_possible_via_builder() {
     let mut db = db();
     db.execute(
         rsbatis::insert::<User>()
-            .set(User::col_name(), "王五")
-            .set_null(User::col_age())
+            .set(User::name(), "王五")
+            .set_null(User::age())
             .build(rsbatis::Dialect::Sqlite),
     )
     .expect("显式 NULL");

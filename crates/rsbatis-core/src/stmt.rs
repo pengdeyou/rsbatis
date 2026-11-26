@@ -1044,8 +1044,8 @@ impl InsertStmt {
     ///
     /// ```ignore
     /// insert::<User>()
-    ///     .set(User::col_id(), 1)
-    ///     .set(User::col_name(), "张三")
+    ///     .set(User::id(), 1)
+    ///     .set(User::name(), "张三")
     ///     .on_conflict_do_update(["id"], ["name"]);
     /// // SQLite/PG: ON CONFLICT ("id") DO UPDATE SET "name" = excluded."name"
     /// // MySQL    : ON DUPLICATE KEY UPDATE "name" = VALUES("name")

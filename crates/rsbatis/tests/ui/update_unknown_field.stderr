@@ -1,14 +1,14 @@
-error[E0599]: no associated function or constant named `col_aeg` found for struct `User` in the current scope
+error[E0599]: no associated function or constant named `aeg` found for struct `User` in the current scope
   --> tests/ui/update_unknown_field.rs:12:28
    |
  6 | struct User {
-   | ----------- associated function or constant `col_aeg` not found for this struct
+   | ----------- associated function or constant `aeg` not found for this struct
 ...
 12 |     let _ = update!(User { aeg: 1 } where User.id == 1);
    |                            ^^^ associated function or constant not found in `User`
    |
-help: there is an associated function `col_age` with a similar name
+help: there is an associated function `age` with a similar name
    |
 12 -     let _ = update!(User { aeg: 1 } where User.id == 1);
-12 +     let _ = update!(User { col_age: 1 } where User.id == 1);
+12 +     let _ = update!(User { age: 1 } where User.id == 1);
    |

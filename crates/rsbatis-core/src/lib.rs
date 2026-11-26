@@ -37,12 +37,14 @@
 mod column;
 mod dialect;
 mod expr;
+mod id;
 mod render;
 mod stmt;
 mod value;
 
 pub use column::Column;
 pub use dialect::Dialect;
+pub use id::{IdError, Snowflake};
 pub use expr::{ArithOp, BinOp, Expr, Frame, FrameBound, Window};
 pub use render::render_expr;
 pub use stmt::{

@@ -5,10 +5,10 @@
 //! - `where_!` 只做**语法重写**：把 `User.age >= 18 && User.name.like("x%")` 这种
 //!   在 Rust 里只能求值成 `bool` 的表达式，改写成构造 `Expr` 的方法调用链。
 //!   类型检查仍然完全交给 `rustc`——列名错是 `E0599`，值类型错是 `E0277`。
-//! - `#[derive(Entity)]` 只做**代码生成**：为结构体的每个字段生成 `col_<field>()`，
+//! - `#[derive(Entity)]` 只做**代码生成**：为结构体的每个字段生成 `<field>()`，
 //!   供 `where_!` 重写 `User.age` 时调用。
 //!
-//! 两者必须配套：`User.age` 会被重写成 `User::col_age()`。
+//! 两者必须配套：`User.age` 会被重写成 `User::age()`。
 //!
 //! ```ignore
 //! #[derive(Entity)]
@@ -65,7 +65,7 @@ pub fn where_(input: TokenStream) -> TokenStream {
 /// 别名表：`select! { User as u }` 里的 `u` -> 实体 `User`。
 ///
 /// 必须在**重写列引用之前**就收集齐：`u.age` 只有在知道 `u` 是 `User` 时才可能
-/// 变成 `User::col_age().of_table("u")`。
+/// 变成 `User::age().of_table("u")`。
 type Aliases = std::collections::HashMap<String, syn::Ident>;
 
 /// 重写过程中的三种中间形态。
@@ -75,7 +75,7 @@ type Aliases = std::collections::HashMap<String, syn::Ident>;
 /// 如果一律走 `Expr::cmp(Expr, Expr)`，`User.age == "x"` 会被 `Expr::lit("x")` 悄悄接受，
 /// 类型安全就丢了。
 enum Node {
-    /// 一个具体列，展开成 `User::col_age()`，类型是 `Column<T>`。
+    /// 一个具体列，展开成 `User::age()`，类型是 `Column<T>`。
     Col(TokenStream2),
     /// 已经是 `Expr`。
     Expr(TokenStream2),
@@ -102,7 +102,7 @@ fn rewrite(expr: &SynExpr, core: &TokenStream2, al: &Aliases) -> syn::Result<Nod
             Ok(Node::Expr(quote!(#core::Expr::paren(#inner))))
         }
 
-        // `User.age` -> `User::col_age()`
+        // `User.age` -> `User::age()`
         SynExpr::Field(f) => {
             let base = single_path_ident(&f.base).ok_or_else(|| {
                 syn::Error::new_spanned(
@@ -116,10 +116,10 @@ fn rewrite(expr: &SynExpr, core: &TokenStream2, al: &Aliases) -> syn::Result<Nod
                     "rsbatis: 列引用不支持元组下标（`.0`），只能写字段名",
                 ));
             };
-            let col_fn = format_ident!("col_{}", field);
+            let col_fn = field.clone();
 
             // 别名优先：`select! { User as u ... }` 里的 `u.age`
-            // -> `User::col_age().of_table("u")`
+            // -> `User::age().of_table("u")`
             if let Some(ent) = al.get(&base) {
                 let alias_lit = syn::LitStr::new(&base, f.base.span());
                 return Ok(Node::Col(quote!(#ent::#col_fn().of_table(#alias_lit))));
@@ -139,8 +139,8 @@ fn rewrite(expr: &SynExpr, core: &TokenStream2, al: &Aliases) -> syn::Result<Nod
                     ),
                 ));
             }
-            // base 是 String；直接插进 quote! 会变成字符串字面量（`"User"::col_age()`）。
-            // 用原始表达式 token 才能得到合法的 `User::col_age()`。
+            // base 是 String；直接插进 quote! 会变成字符串字面量（`"User"::age()`）。
+            // 用原始表达式 token 才能得到合法的 `User::age()`。
             let base_path = &f.base;
             Ok(Node::Col(quote!(#base_path::#col_fn())))
         }
@@ -159,7 +159,7 @@ fn rewrite(expr: &SynExpr, core: &TokenStream2, al: &Aliases) -> syn::Result<Nod
             }
         }
 
-        // `User.name.like("x%")` -> `User::col_name().like("x%")`
+        // `User.name.like("x%")` -> `User::name().like("x%")`
         SynExpr::MethodCall(m) => {
             let recv = match rewrite(&m.receiver, core, al)? {
                 Node::Col(ts) | Node::Expr(ts) | Node::Val(ts) => ts,
@@ -392,17 +392,17 @@ fn arith_variant(op: &SynBinOp) -> syn::Ident {
 // pub struct User {
 //     pub id: i64,
 //     pub name: String,
-//     pub age: Option<i32>,   // Option<T> => 列可空，col_age() 仍是 Column<i32>
+//     pub age: Option<i32>,   // Option<T> => 列可空，age() 仍是 Column<i32>
 // }
 // ```
 //
 // 展开出：
 // - `impl Entity`：TABLE / COLUMNS / NULLABLE
-// - `impl User { pub fn col_id() -> Column<i64>, col_name() -> Column<String>, ... }`
+// - `impl User { pub fn id() -> Column<i64>, name() -> Column<String>, ... }`
 //
-// 注意 `col_age()` 返回 `Column<i32>` 而不是 `Column<Option<i32>>`：比较
+// 注意 `age()` 返回 `Column<i32>` 而不是 `Column<Option<i32>>`：比较
 // `age().lt(18)` 的类型参数不该被可空性污染。是否可空由 `Entity::NULLABLE`
-// 单独表达，`set_null(col_age())` 负责写入 NULL。
+// 单独表达，`set_null(age())` 负责写入 NULL。
 
 #[proc_macro_derive(Entity, attributes(rsbatis))]
 pub fn derive_entity(input: TokenStream) -> TokenStream {
@@ -445,6 +445,17 @@ fn expand_entity(ast: &DeriveInput) -> syn::Result<TokenStream2> {
     let mut col_names: Vec<String> = Vec::new();
     let mut null_names: Vec<String> = Vec::new();
     let mut pk_names: Vec<String> = Vec::new();
+    // 列访问器直接用字段名（`User::age()`），所以字段名不能与 `Entity` / `FromRow`
+    // 的关联项重名，否则生成的可选项会和 trait 里的项撞在一起，报错指向宏而非用户。
+    const RESERVED: &[&str] = &[
+        "table",
+        "columns",
+        "nullable",
+        "primary_key",
+        "column_values",
+        "from_row",
+        "from_row_prefix",
+    ];
     let mut col_fns: Vec<TokenStream2> = Vec::new();
     let mut value_pushes: Vec<TokenStream2> = Vec::new();
 
@@ -452,11 +463,22 @@ fn expand_entity(ast: &DeriveInput) -> syn::Result<TokenStream2> {
         let Some(ident) = f.ident.as_ref() else {
             return Err(syn::Error::new_spanned(f, "rsbatis: 字段缺少名字"));
         };
+        let name = ident.to_string();
+        if RESERVED.contains(&name.as_str()) {
+            return Err(syn::Error::new(
+                ident.span(),
+                format!(
+                    "rsbatis: 字段 `{name}` 与 `Entity`/`FromRow` 的关联项同名，\
+                     生成的列访问器 `{name}()` 会和它撞；请给字段改个名字"
+                ),
+            ));
+        }
+
         let (col, is_pk) = field_attrs(f, ident)?;
         let (inner, is_nullable) = map_field_type(&f.ty)?;
 
         let col_lit = LitStr::new(&col, ident.span());
-        let col_fn = format_ident!("col_{}", ident);
+        let col_fn = ident.clone();
         let fn_doc = format!(
             "本字段对应的列 `{col}`。由 `#[derive(Entity)]` 生成{}",
             if is_nullable {
@@ -684,13 +706,13 @@ fn to_snake_case(s: &str) -> String {
 
 /// 字面量式插入：`insert! { User { name: "张三", age: 20 } }`。
 ///
-/// 展开成 `insert::<User>().set(User::col_name(), "张三").set(User::col_age(), 20)`。
-/// 关键点是**列名不在这里硬编码**：走 `col_<field>()`，所以
+/// 展开成 `insert::<User>().set(User::name(), "张三").set(User::age(), 20)`。
+/// 关键点是**列名不在这里硬编码**：走 `<field>()`，所以
 /// `#[rsbatis(column = "...")]` 的重命名、以及 `Option<T>` 列的类型参数，
 /// 都由 derive 保证，宏只负责把字段名接上去。
 ///
 /// 不写的字段就是不写该列（交给数据库默认值）；`Option` 字段想写 NULL 请用
-/// `set_null(col_age())`，因为 `age: None` 在这里没有意义（等价于不写）。
+/// `set_null(age())`，因为 `age: None` 在这里没有意义（等价于不写）。
 #[proc_macro]
 pub fn insert(input: TokenStream) -> TokenStream {
     let krate: TokenStream2 = CRATE.parse().expect("CRATE 是合法路径");
@@ -725,7 +747,7 @@ pub fn insert(input: TokenStream) -> TokenStream {
                     .into()
             }
         };
-        let col_fn = format_ident!("col_{}", ident);
+        let col_fn = ident.clone();
         let value = &f.expr;
         setters.push(quote! { .set(<#entity>::#col_fn(), #value) });
     }
@@ -1274,7 +1296,7 @@ fn named_fields(
 ///
 /// 为什么是"结构体字面量"形态而不是 `.set_age(25)`：Rust 的方法名必须在类型定义时就存在，
 /// 宏无法为一个泛型 `UpdateStmt` 动态生成 `set_<任意字段>` 方法。用字面量形态，
-/// 字段名在宏里直接变成 `<E>::col_<field>()`，既准确又能让编译器校验类型。
+/// 字段名在宏里直接变成 `<E>::<field>()`，既准确又能让编译器校验类型。
 #[proc_macro]
 pub fn update(input: TokenStream) -> TokenStream {
     // 先转 proc_macro2：展开函数的入参类型统一成 TokenStream2 才能在 `#[cfg(test)]` 里直接调，
@@ -1387,7 +1409,7 @@ fn expand_update(input: TokenStream2) -> syn::Result<TokenStream2> {
         let mut __stmt = #core::UpdateStmt::new(<#entity as #core::Entity>::TABLE);
     };
     for (field, value) in sets {
-        let col = syn::Ident::new(&format!("col_{}", field), field.span());
+        let col = syn::Ident::new(&field.to_string(), field.span());
         body.extend(quote! {
             __stmt = __stmt.set(<#entity>::#col(), #value);
         });
@@ -1472,14 +1494,14 @@ mod tests {
     fn update_expands_one_set_per_field() {
         let out = upd("User { age: 25 } where User.age >= 18").unwrap();
         assert!(out.contains("UpdateStmt :: new"), "got: {out}");
-        assert!(out.contains("col_age"), "got: {out}");
+        assert!(out.contains(":: age ()"), "got: {out}");
         assert!(out.contains("where_"), "got: {out}");
     }
 
     #[test]
     fn update_expands_multiple_fields_in_order() {
         let out = upd(r#"User { name: "x", age: 1 }"#).unwrap();
-        let (n, a) = (out.find("col_name").unwrap(), out.find("col_age").unwrap());
+        let (n, a) = (out.find(":: name ()").unwrap(), out.find(":: age ()").unwrap());
         assert!(n < a, "字段顺序应保持书写顺序，got: {out}");
     }
 
@@ -1549,6 +1571,6 @@ mod tests {
     fn where_segment_still_rewrites_columns() {
         // 条件里的 `User.age` 必须被重写成实体列，不能原样留下（Rust 里那根本不是合法表达式）
         let out = upd("User { age: 1 } where User.age >= 18").unwrap();
-        assert!(out.contains("col_age"), "got: {out}");
+        assert!(out.contains(":: age ()"), "got: {out}");
     }
 }
