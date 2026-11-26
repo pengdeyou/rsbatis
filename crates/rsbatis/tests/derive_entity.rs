@@ -1,11 +1,11 @@
 //! `#[derive(Entity)]` 的行为锁定。
 //!
 //! 这里断言的都是"用户看不见但依赖着"的东西：表名、列顺序、可空标记、
-//! `col_xxx()` 的函数名与列名，以及它能否和 `where_!` 宏串起来。
+//! `col_xxx()` 的函数名与列名，以及它能否和 `filter!` 宏串起来。
 
 #![allow(dead_code)] // 这些结构体只用来验证派生结果，字段本身不会被读取
 
-use rsbatis::{select, where_, Dialect, Entity};
+use rsbatis::{select, filter, Dialect, Entity};
 
 #[derive(Entity)]
 #[rsbatis(table = "users")]
@@ -55,15 +55,15 @@ fn default_table_name_is_snake_case() {
 }
 
 #[test]
-fn derived_columns_work_with_where_macro() {
+fn derived_columns_work_with_filtermacro() {
     let stmt = select::<User>()
-        .where_(where_!(User.age >= 18))
+        .filter(filter!(User.age >= 18))
         .build(Dialect::Sqlite);
     assert_eq!(r#"SELECT * FROM "users" WHERE "age" >= ?"#, stmt.text);
     assert_eq!(1, stmt.params.len());
 
     let mysql = select::<User>()
-        .where_(where_!(User.name.like("zhang%") && User.age >= 18))
+        .filter(filter!(User.name.like("zhang%") && User.age >= 18))
         .build(Dialect::MySql);
     assert_eq!(
         "SELECT * FROM `users` WHERE `name` LIKE ? AND `age` >= ?",
@@ -87,7 +87,7 @@ fn derived_columns_usable_in_dml() {
 
     let upd = rsbatis::update::<User>()
         .set(User::age(), 21)
-        .where_(where_!(User.id == 1))
+        .filter(filter!(User.id == 1))
         .build(Dialect::Sqlite);
     assert_eq!(r#"UPDATE "users" SET "age" = ? WHERE "id" = ?"#, upd.text);
 }

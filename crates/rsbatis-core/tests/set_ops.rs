@@ -95,10 +95,10 @@ fn build_count_wraps_set_op() {
 }
 
 #[test]
-fn where_on_set_op_still_warns_about_scope() {
+fn filteron_set_op_still_warns_about_scope() {
     // 与 UNION 同一个陷阱：WHERE 只作用于第一段
     let stmt = seg("a", "x")
-        .and_where(Expr::cmp(BinOp::Gt, Expr::col("a", "x"), Expr::lit(1_i64)))
+        .and_filter(Expr::cmp(BinOp::Gt, Expr::col("a", "x"), Expr::lit(1_i64)))
         .except(&seg("b", "x"));
     assert!(
         stmt.build(Dialect::Sqlite)

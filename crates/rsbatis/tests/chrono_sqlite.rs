@@ -68,7 +68,7 @@ fn roundtrip_keeps_microseconds_and_compares_as_time() {
     db.execute(
         rsbatis::update::<Event>()
             .set(Event::created(), late)
-            .where_(Event::name().eq("早")),
+            .filter(Event::name().eq("早")),
     )
     .unwrap();
     let all2: Vec<Event> = db

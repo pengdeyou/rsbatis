@@ -44,8 +44,8 @@ fn cte_filters_twice() {
         .column("id")
         .column("name")
         .column("age")
-        .where_(Column::<i32>::new("ct_users", "age").ge(20_i32));
-    let stmt = SelectStmt::new("t").cte("t", &sub).where_(Expr::cmp(
+        .filter(Column::<i32>::new("ct_users", "age").ge(20_i32));
+    let stmt = SelectStmt::new("t").cte("t", &sub).filter(Expr::cmp(
         BinOp::Ge,
         Expr::Col("t", "age"),
         Expr::lit(30_i32),
@@ -63,8 +63,8 @@ fn cte_param_order_is_observable() {
         .column("id")
         .column("name")
         .column("age")
-        .where_(Column::<i32>::new("ct_users", "age").ge(20_i32));
-    let stmt = SelectStmt::new("t").cte("t", &sub).where_(Expr::cmp(
+        .filter(Column::<i32>::new("ct_users", "age").ge(20_i32));
+    let stmt = SelectStmt::new("t").cte("t", &sub).filter(Expr::cmp(
         BinOp::Ge,
         Expr::Col("t", "age"),
         Expr::lit(40_i32),
@@ -77,7 +77,7 @@ fn cte_count_matches() {
     let mut db = setup();
     let sub = SelectStmt::new("ct_users")
         .column("id")
-        .where_(Column::<i32>::new("ct_users", "age").ge(20_i32));
+        .filter(Column::<i32>::new("ct_users", "age").ge(20_i32));
     let count_sql = SelectStmt::new("t")
         .cte("t", &sub)
         .build_count(db.dialect());
@@ -93,17 +93,17 @@ fn two_ctes_in_one_query() {
         .column("id")
         .column("name")
         .column("age")
-        .where_(Column::<i32>::new("ct_users", "age").le(30_i32));
+        .filter(Column::<i32>::new("ct_users", "age").le(30_i32));
     let mid = SelectStmt::new("ct_users")
         .column("id")
         .column("name")
         .column("age")
-        .where_(Column::<i32>::new("ct_users", "age").ge(20_i32));
+        .filter(Column::<i32>::new("ct_users", "age").ge(20_i32));
     // 两个 CTE 都定义，主查询只用一个（SQLite 允许定义未使用的 CTE）
     let stmt = SelectStmt::new("y")
         .cte("y", &young)
         .cte("m", &mid)
-        .where_(Expr::cmp(
+        .filter(Expr::cmp(
             BinOp::Ge,
             Expr::Col("y", "age"),
             Expr::lit(30_i32),

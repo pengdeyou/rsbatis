@@ -14,7 +14,7 @@ fn outer() -> SelectStmt {
 fn inner() -> SelectStmt {
     SelectStmt::new("orders")
         .column("user_id")
-        .where_(Expr::cmp(
+        .filter(Expr::cmp(
             rsbatis_core::BinOp::Ge,
             Expr::Col("orders", "amount"),
             Expr::lit(100_i64),
@@ -24,12 +24,12 @@ fn inner() -> SelectStmt {
 #[test]
 fn in_subquery_renders_and_keeps_param_numbering() {
     let mut q = outer();
-    q = q.where_(Expr::cmp(
+    q = q.filter(Expr::cmp(
         rsbatis_core::BinOp::Ge,
         Expr::Col("users", "id"),
         Expr::lit(1_i64),
     ));
-    q = q.and_where(Expr::in_subquery(Expr::Col("users", "id"), &inner()));
+    q = q.and_filter(Expr::in_subquery(Expr::Col("users", "id"), &inner()));
 
     let sql = q.build(Dialect::Sqlite);
     assert_eq!(
@@ -46,15 +46,15 @@ fn in_subquery_renders_and_keeps_param_numbering() {
 fn subquery_params_start_after_outer_params() {
     // 反向验证：外层有 3 个参数时，子查询参数必须从第 4 个开始
     let mut q = SelectStmt::new("users").column("id");
-    q = q.where_(Expr::cmp(
+    q = q.filter(Expr::cmp(
         rsbatis_core::BinOp::Ge,
         Expr::Col("users", "age"),
         Expr::lit(18_i64),
     ));
-    // 用 and_where 追加（where_ 是覆盖语义，重复调用会替换条件）
-    q = q.and_where(Expr::lit("x"));
-    q = q.and_where(Expr::lit("y"));
-    q = q.and_where(Expr::in_subquery(Expr::Col("users", "id"), &inner()));
+    // 用 and_filter 追加（filter 是覆盖语义，重复调用会替换条件）
+    q = q.and_filter(Expr::lit("x"));
+    q = q.and_filter(Expr::lit("y"));
+    q = q.and_filter(Expr::in_subquery(Expr::Col("users", "id"), &inner()));
 
     let sql = q.build(Dialect::Postgres);
     // PG 用 $N 编号，正好能一眼看出编号是否连续
@@ -71,7 +71,7 @@ fn subquery_params_start_after_outer_params() {
 #[test]
 fn not_in_subquery_renders_with_negation() {
     let sql = outer()
-        .where_(Expr::not_in_subquery(Expr::Col("users", "id"), &inner()))
+        .filter(Expr::not_in_subquery(Expr::Col("users", "id"), &inner()))
         .build(Dialect::MySql);
     assert!(
         sql.text.contains("NOT IN (SELECT"),
@@ -86,12 +86,12 @@ fn exists_forces_table_qualification() {
     // 被解析成 orders 表自己的 id 列——静默查错表。
     let sub = SelectStmt::new("orders")
         .column_expr(Expr::lit(1_i64))
-        .where_(Expr::cmp(
+        .filter(Expr::cmp(
             rsbatis_core::BinOp::Eq,
             Expr::Col("orders", "user_id"),
             Expr::Col("users", "id"),
         ));
-    let sql = outer().where_(Expr::exists(&sub)).build(Dialect::Sqlite);
+    let sql = outer().filter(Expr::exists(&sub)).build(Dialect::Sqlite);
     assert_eq!(
         "SELECT \"id\" FROM \"users\" WHERE EXISTS (SELECT ? FROM \"orders\" WHERE \"orders\".\"user_id\" = \"users\".\"id\")",
         sql.text
@@ -110,7 +110,7 @@ fn exists_inside_or_branch_keeps_parentheses() {
         ),
         Expr::exists(&sub),
     ]);
-    let sql = outer().where_(expr).build(Dialect::Sqlite);
+    let sql = outer().filter(expr).build(Dialect::Sqlite);
     // OR 的右分支本身是谓词级表达式，不需要额外括号
     assert!(
         sql.text.contains("= ? OR EXISTS (SELECT"),
@@ -124,22 +124,22 @@ fn nested_subquery_keeps_numbering() {
     // 两层嵌套：users IN (orders WHERE user_id IN (payments …))
     let deepest = SelectStmt::new("payments")
         .column("order_id")
-        .where_(Expr::cmp(
+        .filter(Expr::cmp(
             rsbatis_core::BinOp::Ge,
             Expr::Col("payments", "amount"),
             Expr::lit(50_i64),
         ));
     let mid = SelectStmt::new("orders")
         .column("user_id")
-        .where_(Expr::in_subquery(Expr::Col("orders", "id"), &deepest));
+        .filter(Expr::in_subquery(Expr::Col("orders", "id"), &deepest));
 
     let sql = outer()
-        .where_(Expr::cmp(
+        .filter(Expr::cmp(
             rsbatis_core::BinOp::Ge,
             Expr::Col("users", "age"),
             Expr::lit(1_i64),
         ))
-        .and_where(Expr::in_subquery(Expr::Col("users", "id"), &mid))
+        .and_filter(Expr::in_subquery(Expr::Col("users", "id"), &mid))
         .build(Dialect::Sqlite);
 
     assert_eq!(2, sql.params.len(), "两层子查询也只能有 2 个参数");
@@ -158,14 +158,14 @@ fn mysql_warns_on_in_with_limit() {
     // 而不是让用户拿着一条正常-looking 的 SQL 去撞数据库错误。
     let sub = SelectStmt::new("orders").column("user_id").limit(1);
     let sql = outer()
-        .where_(Expr::in_subquery(Expr::Col("users", "id"), &sub))
+        .filter(Expr::in_subquery(Expr::Col("users", "id"), &sub))
         .build(Dialect::MySql);
     assert_eq!(1, sql.warnings.len(), "MySQL 侧应有一条告警");
     assert!(sql.warnings[0].contains("1235"), "告警要带上错误码便于搜索");
 
     // 同样的 SQL 在 SQLite / PG 上没有这个限制，不应该告警
     let sql = outer()
-        .where_(Expr::in_subquery(Expr::Col("users", "id"), &sub))
+        .filter(Expr::in_subquery(Expr::Col("users", "id"), &sub))
         .build(Dialect::Sqlite);
     assert!(sql.warnings.is_empty(), "SQLite 不该告警");
 }

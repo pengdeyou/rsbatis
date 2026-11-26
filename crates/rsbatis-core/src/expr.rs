@@ -219,7 +219,7 @@ impl FrameBound {
 }
 
 impl Expr {
-    // ---- 与宏的契约：这三个构造器被 `where_!` 生成的代码直接调用，签名不可改 ----
+    // ---- 与宏的契约：这三个构造器被 `filter!` 生成的代码直接调用，签名不可改 ----
 
     pub fn and(items: Vec<Expr>) -> Expr {
         Expr::And(items)

@@ -50,7 +50,7 @@ pub struct User {
   the struct must mirror the table.
 
 `Entity` generates the column accessors (`User::id()`, `User::name()`, …).
-`FromRow` generates the row decoder. Both are needed: the first feeds `where_!` and the builders,
+`FromRow` generates the row decoder. Both are needed: the first feeds `filter!` and the builders,
 the second feeds `fetch_all` / `fetch_one_as` / `paginate`.
 
 ## Queries
@@ -94,12 +94,16 @@ let adults: Vec<User> = db.fetch_all(&select! {
 })?;
 
 // builder + expression macro, when the query is assembled piecemeal
-let q = select::<User>().where_(where_!(
+let q = select::<User>().filter(filter!(
     User.age.between(18, 30) || User.name.in_(["李四"])
 ));
 ```
 
-`where_!` only rewrites tokens into `Expr` builder calls; type checking stays with `rustc`. A
+The builder method is `filter`, not `where`: `where` is a reserved Rust keyword and cannot be an
+identifier (writing `r#where` is legal but forces `r#` at every call site). The `select!` grammar
+keeps the SQL-looking `where` because macro input is raw tokens and never parsed as an identifier.
+
+`filter!` only rewrites tokens into `Expr` builder calls; type checking stays with `rustc`. A
 misspelled column is `E0599` with rustc's own suggestion, a wrong literal type is `E0277`.
 
 Available predicates: `eq`, `ne`, `gt`, `ge`, `lt`, `le`, `like`, `not_like`, `in_`, `not_in`,
@@ -138,7 +142,7 @@ silently returns a stale id fails loudly instead of handing back a plausible-loo
 db.execute(
     update::<User>()
         .set(User::age(), 21)
-        .where_(where_!(User.id == 1))
+        .filter(filter!(User.id == 1))
         .build(Dialect::Sqlite),
 )?;
 
@@ -146,7 +150,7 @@ db.execute(
 let affected = db.execute(
     update::<User>()
         .set(User::age(), 18)
-        .where_(where_!(User.age < 18))
+        .filter(filter!(User.age < 18))
         .build(Dialect::Sqlite),
 )?;
 ```
@@ -159,8 +163,8 @@ duplicate.
 ### Delete
 
 ```rust
-db.execute(delete::<User>().where_(where_!(User.id == 4)).build(Dialect::Sqlite))?;
-// by condition: delete::<User>().where_(where_!(User.age < 0))
+db.execute(delete::<User>().filter(filter!(User.id == 4)).build(Dialect::Sqlite))?;
+// by condition: delete::<User>().filter(filter!(User.age < 0))
 ```
 
 ### Inner join
@@ -305,7 +309,7 @@ MySQL. If you are already on `i64` keys, snowflake is the shape that costs nothi
 | --- | --- |
 | `rsbatis` | facade: re-exports everything, feature-gated (`sqlite` / `mysql` / `chrono` / `migrate` / `orm`) |
 | `rsbatis-core` | expression AST, `Column<T>`, dialects, SQL rendering (no I/O, no macros, zero deps by default) |
-| `rsbatis-macros` | `where_!`, `select!`, `#[derive(Entity)]`, `#[derive(FromRow)]` |
+| `rsbatis-macros` | `filter!`, `select!`, `#[derive(Entity)]`, `#[derive(FromRow)]` |
 | `rsbatis-driver` | `Driver` trait + SQLite (`rusqlite`) and MySQL (`mysql`) implementations |
 | `rsbatis-orm` | `Session`, `Transaction`, `Pool`, `FromRow`, relations |
 | `rsbatis-migrate` | versioned SQL migrations: `up` / `down` / `status` |

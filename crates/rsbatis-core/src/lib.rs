@@ -18,7 +18,7 @@
 //! let name = Column::<String>::new(User::TABLE, "name");
 //!
 //! let sql = select::<User>()
-//!     .where_(Expr::and(vec![age.ge(18), name.like("zhang%")]))
+//!     .filter(Expr::and(vec![age.ge(18), name.like("zhang%")]))
 //!     .build(Dialect::Sqlite);
 //!
 //! assert_eq!(sql.text, r#"SELECT * FROM "user" WHERE "age" >= ? AND "name" LIKE ?"#);

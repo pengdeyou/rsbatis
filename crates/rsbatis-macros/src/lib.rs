@@ -1,12 +1,12 @@
-//! rsbatis proc-macros: `where_!`、`#[derive(Entity)]`。
+//! rsbatis proc-macros: `filter!`、`#[derive(Entity)]`。
 //!
 //! 两个宏的分工：
 //!
-//! - `where_!` 只做**语法重写**：把 `User.age >= 18 && User.name.like("x%")` 这种
+//! - `filter!` 只做**语法重写**：把 `User.age >= 18 && User.name.like("x%")` 这种
 //!   在 Rust 里只能求值成 `bool` 的表达式，改写成构造 `Expr` 的方法调用链。
 //!   类型检查仍然完全交给 `rustc`——列名错是 `E0599`，值类型错是 `E0277`。
 //! - `#[derive(Entity)]` 只做**代码生成**：为结构体的每个字段生成 `<field>()`，
-//!   供 `where_!` 重写 `User.age` 时调用。
+//!   供 `filter!` 重写 `User.age` 时调用。
 //!
 //! 两者必须配套：`User.age` 会被重写成 `User::age()`。
 //!
@@ -16,7 +16,7 @@
 //! struct User { id: i64, name: String, age: Option<i32> }
 //!
 //! let stmt = select::<User>()
-//!     .where_(where_!(User.age >= 18 && User.name.like("zhang%")))
+//!     .filter(filter!(User.age >= 18 && User.name.like("zhang%")))
 //!     .build(Dialect::MySql);
 //! ```
 
@@ -36,7 +36,7 @@ const CORE: &str = "::rsbatis::__private";
 /// `#[derive(Entity)]` 引用 trait 与 `Column` 的路径。
 const CRATE: &str = "::rsbatis";
 
-/// 允许在 `where_!` 里直接写的 SQL 函数。
+/// 允许在 `filter!` 里直接写的 SQL 函数。
 ///
 /// 白名单而不是"任何函数名都当 SQL 函数"：宏无法知道 `foo()` 是用户的 Rust 函数还是
 /// 数据库函数，猜错了的分寸是"生成的 SQL 在运行时才发现函数不存在"。
@@ -46,11 +46,11 @@ const SQL_FUNCTIONS: &[&str] = &[
 ];
 
 // ============================================================
-// where_!
+// filter!
 // ============================================================
 
 #[proc_macro]
-pub fn where_(input: TokenStream) -> TokenStream {
+pub fn filter(input: TokenStream) -> TokenStream {
     let expr = match syn::parse::<SynExpr>(input) {
         Ok(e) => e,
         Err(err) => return err.to_compile_error().into(),
@@ -201,7 +201,7 @@ fn rewrite(expr: &SynExpr, core: &TokenStream2, al: &Aliases) -> syn::Result<Nod
 
         _ => Err(syn::Error::new_spanned(
             expr,
-            "rsbatis: where_! 不支持的表达式。支持：比较、`&&`/`||`/`!`、`+ - * / %`、\
+            "rsbatis: filter! 不支持的表达式。支持：比较、`&&`/`||`/`!`、`+ - * / %`、\
              括号、`实体.字段`、列方法链（`.like/.in_/.is_null` 等）、SQL 函数白名单、字面量",
         )),
     }
@@ -540,10 +540,10 @@ fn expand_entity(ast: &DeriveInput) -> syn::Result<TokenStream2> {
         .collect();
 
     let name = &ast.ident;
-    let (impl_g, ty_g, where_c) = ast.generics.split_for_impl();
+    let (impl_g, ty_g, filterc) = ast.generics.split_for_impl();
 
     Ok(quote! {
-        impl #impl_g #krate::Entity for #name #ty_g #where_c {
+        impl #impl_g #krate::Entity for #name #ty_g #filterc {
             const TABLE: &'static str = #table_lit;
             const COLUMNS: &'static [&'static str] = &[#(#col_lits),*];
             const NULLABLE: &'static [&'static str] = &[#(#null_lits),*];
@@ -557,7 +557,7 @@ fn expand_entity(ast: &DeriveInput) -> syn::Result<TokenStream2> {
             }
         }
 
-        impl #impl_g #name #ty_g #where_c {
+        impl #impl_g #name #ty_g #filterc {
             #(#col_fns)*
         }
     })
@@ -816,7 +816,7 @@ fn expand_select(input: TokenStream) -> syn::Result<TokenStream2> {
         }
     }
 
-    let mut where_toks: Vec<TokenTree> = Vec::new();
+    let mut filtertoks: Vec<TokenTree> = Vec::new();
     let mut order_toks: Vec<TokenTree> = Vec::new();
     let mut limit_lit: Option<TokenTree> = None;
     let mut offset_lit: Option<TokenTree> = None;
@@ -943,7 +943,7 @@ fn expand_select(input: TokenStream) -> syn::Result<TokenStream2> {
         }
         match seg {
             "join_on" => join_on_toks.push(toks[pos].clone()),
-            "where" => where_toks.push(toks[pos].clone()),
+            "where" => filtertoks.push(toks[pos].clone()),
             "order_by" => order_toks.push(toks[pos].clone()),
             "limit" => {
                 limit_lit = Some(toks[pos].clone());
@@ -1014,10 +1014,10 @@ fn expand_select(input: TokenStream) -> syn::Result<TokenStream2> {
         out
     };
 
-    let where_expr = if where_toks.is_empty() {
+    let filterexpr = if filtertoks.is_empty() {
         None
     } else {
-        let e: SynExpr = syn::parse2(toks_to_stream(where_toks))
+        let e: SynExpr = syn::parse2(toks_to_stream(filtertoks))
             .map_err(|e| with_hint(e, "rsbatis: where 段不是合法的 Rust 表达式"))?;
         let node = rewrite(&e, &core, &aliases)
             .map_err(|e| with_hint(e, "rsbatis: where 段无法转成 SQL 表达式"))?;
@@ -1067,8 +1067,8 @@ fn expand_select(input: TokenStream) -> syn::Result<TokenStream2> {
     } else {
         quote!()
     };
-    let where_stmt = match where_expr {
-        Some(e) => quote!(__rsbatis_stmt = __rsbatis_stmt.where_(#e);),
+    let filterstmt = match filterexpr {
+        Some(e) => quote!(__rsbatis_stmt = __rsbatis_stmt.filter(#e);),
         None => quote!(),
     };
     let order_stmts = orders
@@ -1089,7 +1089,7 @@ fn expand_select(input: TokenStream) -> syn::Result<TokenStream2> {
             #main_alias_stmt
             #distinct_stmt
             #(#join_stmts)*
-            #where_stmt
+            #filterstmt
             #(#order_stmts)*
             #limit_stmt
             #offset_stmt
@@ -1229,10 +1229,10 @@ fn expand_from_row(ast: &DeriveInput) -> syn::Result<TokenStream2> {
     }
 
     let name = &ast.ident;
-    let (impl_g, ty_g, where_c) = ast.generics.split_for_impl();
+    let (impl_g, ty_g, filterc) = ast.generics.split_for_impl();
 
     Ok(quote! {
-        impl #impl_g #krate::FromRow for #name #ty_g #where_c {
+        impl #impl_g #krate::FromRow for #name #ty_g #filterc {
             fn from_row(
                 __rsbatis_row: &#krate::Row,
             ) -> ::core::result::Result<Self, #krate::DriverError> {
@@ -1417,7 +1417,7 @@ fn expand_update(input: TokenStream2) -> syn::Result<TokenStream2> {
     if let Some(f) = filter {
         let node = rewrite(&f, &core, &Aliases::new())?;
         let expr = node.into_expr(&core);
-        body.extend(quote! { __stmt = __stmt.where_(#expr); });
+        body.extend(quote! { __stmt = __stmt.filter(#expr); });
     }
     Ok(quote! {{ #body __stmt }})
 }
@@ -1467,7 +1467,7 @@ fn expand_delete(input: TokenStream2) -> syn::Result<TokenStream2> {
     if let Some(f) = filter {
         let node = rewrite(&f, &core, &Aliases::new())?;
         let expr = node.into_expr(&core);
-        body.extend(quote! { __stmt = __stmt.where_(#expr); });
+        body.extend(quote! { __stmt = __stmt.filter(#expr); });
     }
     Ok(quote! {{ #body __stmt }})
 }
@@ -1495,7 +1495,7 @@ mod tests {
         let out = upd("User { age: 25 } where User.age >= 18").unwrap();
         assert!(out.contains("UpdateStmt :: new"), "got: {out}");
         assert!(out.contains(":: age ()"), "got: {out}");
-        assert!(out.contains("where_"), "got: {out}");
+        assert!(out.contains("filter"), "got: {out}");
     }
 
     #[test]
@@ -1506,8 +1506,8 @@ mod tests {
     }
 
     #[test]
-    fn update_without_where_has_no_filter() {
-        assert!(!upd("User { age: 1 }").unwrap().contains("where_"));
+    fn update_without_filterhas_no_filter() {
+        assert!(!upd("User { age: 1 }").unwrap().contains("filter"));
     }
 
     #[test]
@@ -1544,12 +1544,12 @@ mod tests {
     fn delete_expands_with_where() {
         let out = del("User where User.age < 0").unwrap();
         assert!(out.contains("DeleteStmt :: new"), "got: {out}");
-        assert!(out.contains("where_"), "got: {out}");
+        assert!(out.contains("filter"), "got: {out}");
     }
 
     #[test]
-    fn delete_without_where_is_allowed() {
-        assert!(!del("User").unwrap().contains("where_"));
+    fn delete_without_filteris_allowed() {
+        assert!(!del("User").unwrap().contains("filter"));
     }
 
     #[test]
@@ -1568,7 +1568,7 @@ mod tests {
     }
 
     #[test]
-    fn where_segment_still_rewrites_columns() {
+    fn filtersegment_still_rewrites_columns() {
         // 条件里的 `User.age` 必须被重写成实体列，不能原样留下（Rust 里那根本不是合法表达式）
         let out = upd("User { age: 1 } where User.age >= 18").unwrap();
         assert!(out.contains(":: age ()"), "got: {out}");

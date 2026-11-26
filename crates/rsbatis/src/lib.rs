@@ -3,7 +3,7 @@
 //! A SQLAlchemy-style ORM for Rust. Write queries that read like business code:
 //!
 //! ```ignore
-//! let stmt = select::<User>().where_!(User.age >= 18 && User.name.like("zhang%"));
+//! let stmt = select::<User>().filter!(User.age >= 18 && User.name.like("zhang%"));
 //! ```
 //!
 //! ## Status: 0.1.0-alpha.4
@@ -33,7 +33,7 @@
 extern crate self as rsbatis;
 
 pub use rsbatis_core::*;
-pub use rsbatis_macros::where_;
+pub use rsbatis_macros::filter;
 // select 同样与 core 的 `select` 函数同名，但宏在 macro 命名空间，不冲突。
 pub use rsbatis_macros::select;
 // `insert!`（字面量式）与 core 的 `insert::<E>()` 函数同名，同样靠命名空间区分。
@@ -73,7 +73,7 @@ mod engine;
 #[cfg(any(feature = "sqlite", feature = "mysql"))]
 pub use engine::{create_engine, dialect_of, Engine};
 
-/// Implementation detail used by the `where_!` macro expansion. Not public API.
+/// Implementation detail used by the `filter!` macro expansion. Not public API.
 #[doc(hidden)]
 pub mod __private {
     pub use rsbatis_core::*;

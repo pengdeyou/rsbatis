@@ -23,7 +23,7 @@ fn age() -> Column<i32> {
 
 #[test]
 fn count_without_join_has_no_table_qualifier() {
-    let stmt = select::<User>().where_(age().ge(18));
+    let stmt = select::<User>().filter(age().ge(18));
     let sql = stmt.build_count(Dialect::Sqlite);
     assert_eq!(sql.text, r#"SELECT COUNT(*) FROM "users" WHERE "age" >= ?"#);
     assert_eq!(sql.params.len(), 1);
@@ -33,7 +33,7 @@ fn count_without_join_has_no_table_qualifier() {
 fn count_drops_order_limit_offset() {
     // 分页时把 LIMIT 9 留在 count 里，总数就会永远不超过 9
     let stmt = select::<User>()
-        .where_(age().ge(18))
+        .filter(age().ge(18))
         .order_by(Column::<i64>::new(User::TABLE, "id").expr(), Order::Desc)
         .limit(9)
         .offset(18);
@@ -52,7 +52,7 @@ fn count_keeps_join_and_qualifies_columns() {
             Column::<i64>::new(User::TABLE, "id")
                 .eq_col(Column::<i64>::new(Order_::TABLE, "user_id")),
         )
-        .where_(age().ge(18));
+        .filter(age().ge(18));
     let sql = stmt.build_count(Dialect::MySql);
     assert!(
         sql.text
@@ -72,7 +72,7 @@ fn count_keeps_join_and_qualifies_columns() {
 #[test]
 fn count_with_distinct_wraps_a_subquery() {
     // COUNT(*) + DISTINCT 在 SQL 里不合法；去重后再计数只能用子查询表达
-    let stmt = select::<User>().distinct().where_(age().ge(18)).limit(5);
+    let stmt = select::<User>().distinct().filter(age().ge(18)).limit(5);
     let sql = stmt.build_count(Dialect::Sqlite);
     assert!(
         sql.text
@@ -90,7 +90,7 @@ fn count_with_distinct_wraps_a_subquery() {
 
 #[test]
 fn count_keeps_param_order_for_multi_condition_filters() {
-    let stmt = select::<User>().where_(rsbatis_core::Expr::and(vec![
+    let stmt = select::<User>().filter(rsbatis_core::Expr::and(vec![
         age().ge(18),
         Column::<String>::new(User::TABLE, "name").like("zh%"),
     ]));

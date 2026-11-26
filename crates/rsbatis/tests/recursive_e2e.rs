@@ -42,7 +42,7 @@ fn recursive_numbers_one_to_five() {
     let base = SelectStmt::no_table().column_expr(Expr::lit(1_i64).as_("n"));
     let step = SelectStmt::from_cte("nums")
         .column_expr(Expr::arith(ArithOp::Add, Expr::col("nums", "n"), Expr::lit(1_i64)).as_("n"))
-        .and_where(Expr::cmp(
+        .and_filter(Expr::cmp(
             BinOp::Lt,
             Expr::col("nums", "n"),
             Expr::lit(5_i64),
@@ -71,7 +71,7 @@ fn recursive_tree_descendants() {
         .column("id")
         .column("parent_id")
         .column("name")
-        .and_where(Expr::cmp(
+        .and_filter(Expr::cmp(
             BinOp::Eq,
             Expr::col("tree", "id"),
             Expr::lit(1_i64),
@@ -119,7 +119,7 @@ fn recursive_cte_count_is_total_after_expansion() {
     let base = SelectStmt::no_table().column_expr(Expr::lit(1_i64).as_("n"));
     let step = SelectStmt::from_cte("nums")
         .column_expr(Expr::arith(ArithOp::Add, Expr::col("nums", "n"), Expr::lit(1_i64)).as_("n"))
-        .and_where(Expr::cmp(
+        .and_filter(Expr::cmp(
             BinOp::Lt,
             Expr::col("nums", "n"),
             Expr::lit(10_i64),
@@ -139,7 +139,7 @@ fn recursive_cte_paginates_over_expanded_rows() {
     let base = SelectStmt::no_table().column_expr(Expr::lit(1_i64).as_("n"));
     let step = SelectStmt::from_cte("nums")
         .column_expr(Expr::arith(ArithOp::Add, Expr::col("nums", "n"), Expr::lit(1_i64)).as_("n"))
-        .and_where(Expr::cmp(
+        .and_filter(Expr::cmp(
             BinOp::Lt,
             Expr::col("nums", "n"),
             Expr::lit(7_i64),

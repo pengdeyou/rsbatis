@@ -78,8 +78,8 @@ fn in_subquery_on_mysql() {
     };
     let sub = SelectStmt::new("v_sq_orders")
         .column("user_id")
-        .where_(Column::<i64>::new("v_sq_orders", "amount").ge(100_i64));
-    let stmt = SelectStmt::for_entity::<User>().where_(User::id().in_subquery(&sub));
+        .filter(Column::<i64>::new("v_sq_orders", "amount").ge(100_i64));
+    let stmt = SelectStmt::for_entity::<User>().filter(User::id().in_subquery(&sub));
     assert_eq!(vec!["a".to_string()], names(&mut db, stmt));
 }
 
@@ -91,8 +91,8 @@ fn not_in_subquery_on_mysql() {
     };
     let sub = SelectStmt::new("v_sq_orders")
         .column("user_id")
-        .where_(Column::<i64>::new("v_sq_orders", "amount").ge(100_i64));
-    let stmt = SelectStmt::for_entity::<User>().where_(User::id().not_in_subquery(&sub));
+        .filter(Column::<i64>::new("v_sq_orders", "amount").ge(100_i64));
+    let stmt = SelectStmt::for_entity::<User>().filter(User::id().not_in_subquery(&sub));
     let mut got = names(&mut db, stmt);
     got.sort();
     assert_eq!(vec!["b".to_string(), "c".to_string()], got);
@@ -106,12 +106,12 @@ fn exists_correlated_on_mysql() {
     };
     let sub = SelectStmt::new("v_sq_orders")
         .column_expr(Expr::lit(1_i64))
-        .where_(Expr::cmp(
+        .filter(Expr::cmp(
             rsbatis::BinOp::Eq,
             Expr::Col("v_sq_orders", "user_id"),
             Expr::Col("v_sq_users", "id"),
         ));
-    let stmt = SelectStmt::for_entity::<User>().where_(Expr::exists(&sub));
+    let stmt = SelectStmt::for_entity::<User>().filter(Expr::exists(&sub));
     let mut got = names(&mut db, stmt);
     got.sort();
     assert_eq!(vec!["a".to_string(), "c".to_string()], got);
@@ -126,15 +126,15 @@ fn mixed_outer_and_inner_params_on_mysql() {
     // 外层 age>=20 + 子查询内部 amount>=200：两个参数，任何错位都会让结果偏离
     let sub = SelectStmt::new("v_sq_orders")
         .column_expr(Expr::lit(1_i64))
-        .where_(Expr::cmp(
+        .filter(Expr::cmp(
             rsbatis::BinOp::Eq,
             Expr::Col("v_sq_orders", "user_id"),
             Expr::Col("v_sq_users", "id"),
         ))
-        .and_where(Column::<i64>::new("v_sq_orders", "amount").ge(200_i64));
+        .and_filter(Column::<i64>::new("v_sq_orders", "amount").ge(200_i64));
     let stmt = SelectStmt::for_entity::<User>()
-        .where_(Column::<i32>::new("v_sq_users", "age").ge(20_i32))
-        .and_where(Expr::exists(&sub));
+        .filter(Column::<i32>::new("v_sq_users", "age").ge(20_i32))
+        .and_filter(Expr::exists(&sub));
     assert_eq!(vec!["a".to_string()], names(&mut db, stmt));
 }
 
@@ -152,7 +152,7 @@ fn in_subquery_with_limit_is_warned_not_silently_broken() {
         .column("user_id")
         .order_by(Expr::Col("v_sq_orders", "amount"), Order::Desc)
         .limit(1);
-    let stmt = SelectStmt::for_entity::<User>().where_(User::id().in_subquery(&sub));
+    let stmt = SelectStmt::for_entity::<User>().filter(User::id().in_subquery(&sub));
     let sql = stmt.build(db.dialect());
     assert_eq!(1, sql.warnings.len());
     assert!(sql.warnings[0].contains("1235"));
@@ -176,13 +176,13 @@ fn exists_replaces_in_limit_workaround() {
     // 直接用相关 EXISTS 挑"存在金额 200 订单的用户"，这是 LIMIT 场景的推荐替代写法。
     let sub = SelectStmt::new("v_sq_orders")
         .column_expr(Expr::lit(1_i64))
-        .where_(Expr::cmp(
+        .filter(Expr::cmp(
             rsbatis::BinOp::Eq,
             Expr::Col("v_sq_orders", "user_id"),
             Expr::Col("v_sq_users", "id"),
         ))
-        .and_where(Column::<i64>::new("v_sq_orders", "amount").ge(200_i64));
-    let stmt = SelectStmt::for_entity::<User>().where_(Expr::exists(&sub));
+        .and_filter(Column::<i64>::new("v_sq_orders", "amount").ge(200_i64));
+    let stmt = SelectStmt::for_entity::<User>().filter(Expr::exists(&sub));
     assert_eq!(vec!["a".to_string()], names(&mut db, stmt));
 }
 
@@ -204,11 +204,11 @@ fn not_in_with_null_in_subquery_returns_nothing() {
     )
     .expect("建 nullable 表");
     let sub = SelectStmt::new("v_sq_nullable").column("user_id");
-    let stmt = SelectStmt::for_entity::<User>().where_(User::id().in_subquery(&sub));
+    let stmt = SelectStmt::for_entity::<User>().filter(User::id().in_subquery(&sub));
     // IN 侧：NULL 不会匹配任何 id，所以空
     assert!(names(&mut db, stmt).is_empty());
 
-    let stmt = SelectStmt::for_entity::<User>().where_(User::id().not_in_subquery(&sub));
+    let stmt = SelectStmt::for_entity::<User>().filter(User::id().not_in_subquery(&sub));
     // NOT IN 侧：集合含 NULL → 恒 NULL → 也是空。这就是那个坑。
     assert!(names(&mut db, stmt).is_empty());
 }

@@ -261,7 +261,7 @@ impl SelectStmt {
     /// let base = SelectStmt::new("nums").column_expr(Expr::lit(1).as_("n"));
     /// let step = SelectStmt::from_cte("nums")
     ///     .column_expr(Expr::arith(ArithOp::Add, Expr::col("nums", "n"), Expr::lit(1)).as_("n"))
-    ///     .and_where(Expr::cmp(BinOp::Lt, Expr::col("nums", "n"), Expr::lit(5)));
+    ///     .and_filter(Expr::cmp(BinOp::Lt, Expr::col("nums", "n"), Expr::lit(5)));
     /// let q = SelectStmt::new("nums").column("n").recursive_cte("nums", &base, &step);
     /// ```
     ///
@@ -305,7 +305,7 @@ impl SelectStmt {
         self
     }
 
-    /// 设置 `HAVING`（覆盖语义，与 `where_` 一致）。
+    /// 设置 `HAVING`（覆盖语义，与 `filter` 一致）。
     ///
     /// 没有 `GROUP BY` 时 `HAVING` 在 SQL 里行为依方言而定（SQLite 允许、MySQL 允许但语义
     /// 等同 WHERE），所以这里不拦——但文档里说明它是分组过滤。
@@ -584,13 +584,13 @@ impl SelectStmt {
         self
     }
 
-    pub fn where_(mut self, e: Expr) -> Self {
+    pub fn filter(mut self, e: Expr) -> Self {
         self.filter = Some(e);
         self
     }
 
     /// 追加条件，自动用 AND 连接（链式写法）。
-    pub fn and_where(mut self, e: Expr) -> Self {
+    pub fn and_filter(mut self, e: Expr) -> Self {
         self.filter = Some(match self.filter.take() {
             Some(f) => Expr::and(vec![f, e]),
             None => e,
@@ -868,13 +868,13 @@ impl SelectStmt {
 
         if self.has_set_op() {
             // `filter` 渲染在 FROM/WHERE 段里，也就是**第一段**内部。
-            // 用户写 `.union_all(&b).and_where(…)` 时几乎都以为是"合并后再过滤"，
+            // 用户写 `.union_all(&b).and_filter(…)` 时几乎都以为是"合并后再过滤"，
             // 实际只有第一段被过滤 —— 结果集里第二段的行不受约束。这类错误不会报错，
             // 只会给出多出来的行，所以必须告警。
             if self.filter.is_some() {
                 warnings.push(
                     "WHERE 只作用于 UNION 的第一段（它写在第一段 SELECT 里）：\
-                     要对整条复合查询过滤，请先用 `from_subquery` 把 UNION 包成派生表，再在外层 `and_where`"
+                     要对整条复合查询过滤，请先用 `from_subquery` 把 UNION 包成派生表，再在外层 `and_filter`"
                         .to_string(),
                 );
             }
@@ -1278,12 +1278,12 @@ impl UpdateStmt {
         self
     }
 
-    pub fn where_(mut self, e: Expr) -> Self {
+    pub fn filter(mut self, e: Expr) -> Self {
         self.filter = Some(e);
         self
     }
 
-    pub fn and_where(mut self, e: Expr) -> Self {
+    pub fn and_filter(mut self, e: Expr) -> Self {
         self.filter = Some(match self.filter.take() {
             Some(f) => Expr::and(vec![f, e]),
             None => e,
@@ -1369,12 +1369,12 @@ impl DeleteStmt {
         }
     }
 
-    pub fn where_(mut self, e: Expr) -> Self {
+    pub fn filter(mut self, e: Expr) -> Self {
         self.filter = Some(e);
         self
     }
 
-    pub fn and_where(mut self, e: Expr) -> Self {
+    pub fn and_filter(mut self, e: Expr) -> Self {
         self.filter = Some(match self.filter.take() {
             Some(f) => Expr::and(vec![f, e]),
             None => e,

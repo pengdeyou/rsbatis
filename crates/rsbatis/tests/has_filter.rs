@@ -2,7 +2,7 @@
 //! 基于关系元数据的 `EXISTS` 过滤（`has()` 的 Rust 形态）。
 //!
 //! SQLAlchemy 里是 `User.has(Post)` / `~User.has(Post)`；这里描述符直接产出
-//! `Expr`，塞进 `where_` 即可。
+//! `Expr`，塞进 `filter` 即可。
 
 #![cfg(feature = "sqlite")]
 
@@ -63,7 +63,7 @@ fn seeded() -> Session<SqliteDriver> {
 fn users_where(db: &mut Session<SqliteDriver>, filter: Expr) -> Vec<String> {
     let stmt = SelectStmt::new("h_user")
         .column("name")
-        .and_where(filter)
+        .and_filter(filter)
         .order_by(Expr::bare_col("name"), SortOrder::Asc);
     #[derive(FromRow, Debug)]
     struct R {
@@ -96,7 +96,7 @@ fn exists_sql_shape_is_correlated() {
     let db = seeded();
     let stmt = SelectStmt::new("h_user")
         .column("name")
-        .and_where(post_user().exists_filter(User::id()))
+        .and_filter(post_user().exists_filter(User::id()))
         .build(db.dialect());
     assert_eq!(
         r#"SELECT "name" FROM "h_user" WHERE EXISTS (SELECT ? AS "__exists" FROM "h_post" WHERE "h_post"."user_id" = "h_user"."id")"#,
@@ -109,7 +109,7 @@ fn exists_sub_can_be_narrowed() {
     let mut db = seeded();
     // 只看已发布的文章：A 有一篇未发、一篇已发，所以 A 仍在；B 也仍在
     let mut sub = post_user().exists_sub(User::id());
-    sub = sub.and_where(Expr::cmp(
+    sub = sub.and_filter(Expr::cmp(
         BinOp::Eq,
         Expr::col("h_post", "published"),
         Expr::lit(1_i64),
@@ -119,7 +119,7 @@ fn exists_sub_can_be_narrowed() {
 
     // 反过来：只有未发布文章的用户 → 只剩 A
     let mut sub = post_user().exists_sub(User::id());
-    sub = sub.and_where(Expr::cmp(
+    sub = sub.and_filter(Expr::cmp(
         BinOp::Eq,
         Expr::col("h_post", "published"),
         Expr::lit(0_i64),
@@ -135,7 +135,7 @@ fn exists_with_outer_alias_requires_matching_of_table() {
     let stmt = SelectStmt::new("h_user")
         .from_alias("u")
         .column("name")
-        .and_where(post_user().exists_filter(User::id().of_table("u")));
+        .and_filter(post_user().exists_filter(User::id().of_table("u")));
     let sql = stmt.build(db.dialect());
     assert!(
         sql.text.contains(r#""h_user"."id""#) || sql.text.contains(r#""u"."id""#),
@@ -173,7 +173,7 @@ fn many_to_many_has_excludes_orphan_links() {
 
     let sql = SelectStmt::new("h_post")
         .column("title")
-        .and_where(rel.exists_filter(Post::id()))
+        .and_filter(rel.exists_filter(Post::id()))
         .order_by(Expr::bare_col("title"), SortOrder::Asc)
         .build(db.dialect());
     #[derive(FromRow, Debug)]
@@ -207,7 +207,7 @@ fn many_to_many_not_exists() {
     );
     let sql = SelectStmt::new("h_post")
         .column("title")
-        .and_where(rel.not_exists_filter(Post::id()))
+        .and_filter(rel.not_exists_filter(Post::id()))
         .order_by(Expr::bare_col("title"), SortOrder::Asc)
         .build(db.dialect());
     #[derive(FromRow, Debug)]
@@ -233,8 +233,8 @@ fn exists_inside_join_query() {
                 Expr::col("h_user", "id"),
             ),
         )
-        .and_where(post_user().exists_filter(User::id()))
-        .and_where(Expr::cmp(
+        .and_filter(post_user().exists_filter(User::id()))
+        .and_filter(Expr::cmp(
             BinOp::Eq,
             Expr::col("h_post", "published"),
             Expr::lit(1_i64),

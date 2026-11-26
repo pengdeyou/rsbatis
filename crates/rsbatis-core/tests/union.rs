@@ -107,13 +107,13 @@ fn build_count_wraps_union_in_subquery() {
 }
 
 #[test]
-fn union_with_where_on_each_segment() {
-    let left = SelectStmt::new("a").column("x").and_where(Expr::cmp(
+fn union_with_filteron_each_segment() {
+    let left = SelectStmt::new("a").column("x").and_filter(Expr::cmp(
         BinOp::Lt,
         Expr::col("a", "x"),
         Expr::lit(10_i64),
     ));
-    let right = SelectStmt::new("b").column("x").and_where(Expr::cmp(
+    let right = SelectStmt::new("b").column("x").and_filter(Expr::cmp(
         BinOp::Gt,
         Expr::col("b", "x"),
         Expr::lit(100_i64),
@@ -132,12 +132,12 @@ fn union_with_where_on_each_segment() {
 
 #[test]
 fn union_params_numbered_in_order_pg() {
-    let left = SelectStmt::new("a").column("x").and_where(Expr::cmp(
+    let left = SelectStmt::new("a").column("x").and_filter(Expr::cmp(
         BinOp::Lt,
         Expr::col("a", "x"),
         Expr::lit(10_i64),
     ));
-    let right = SelectStmt::new("b").column("x").and_where(Expr::cmp(
+    let right = SelectStmt::new("b").column("x").and_filter(Expr::cmp(
         BinOp::Gt,
         Expr::col("b", "x"),
         Expr::lit(100_i64),
@@ -171,12 +171,12 @@ fn union_segment_can_be_derived_table() {
 }
 
 #[test]
-fn where_on_union_warns_about_scope() {
-    // `.union_all(&b).and_where(…)` 的 WHERE 只作用于第一段，用户几乎一定误解，
+fn filteron_union_warns_about_scope() {
+    // `.union_all(&b).and_filter(…)` 的 WHERE 只作用于第一段，用户几乎一定误解，
     // 所以必须告警（否则结果是"多出来的行"，不报错）
     let stmt = SelectStmt::new("a")
         .column("x")
-        .and_where(Expr::cmp(BinOp::Gt, Expr::col("a", "x"), Expr::lit(1_i64)))
+        .and_filter(Expr::cmp(BinOp::Gt, Expr::col("a", "x"), Expr::lit(1_i64)))
         .union_all(&seg("b", "x"));
     let s = stmt.build(Dialect::Sqlite);
     assert!(

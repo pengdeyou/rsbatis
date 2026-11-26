@@ -4,10 +4,10 @@ error[E0599]: no associated function or constant named `ag` found for struct `Us
  5 | struct User {
    | ----------- associated function or constant `ag` not found for this struct
 ...
-12 |     let _ = where_!(User.ag == 1);
+12 |     let _ = filter!(User.ag == 1);
    |                          ^^ associated function or constant not found in `User`
    |
 help: there is an associated function `age` with a similar name
    |
-12 |     let _ = where_!(User.age == 1);
+12 |     let _ = filter!(User.age == 1);
    |                            +

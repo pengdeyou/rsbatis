@@ -76,8 +76,8 @@ fn in_subquery_filters_by_related_table() {
     // 有金额 >= 100 订单的用户
     let sub = SelectStmt::new("sq_orders")
         .column("user_id")
-        .where_(rsbatis::Column::<i64>::new("sq_orders", "amount").ge(100_i64));
-    let stmt = SelectStmt::for_entity::<User>().where_(User::id().in_subquery(&sub));
+        .filter(rsbatis::Column::<i64>::new("sq_orders", "amount").ge(100_i64));
+    let stmt = SelectStmt::for_entity::<User>().filter(User::id().in_subquery(&sub));
     assert_eq!(vec!["a".to_string()], names(&mut session, stmt));
 }
 
@@ -88,8 +88,8 @@ fn not_in_subquery_excludes_and_includes_users_without_orders() {
     // 注意 NULL 陷阱不存在于此（NOT IN 的集合非空且无 NULL），所以 c 会被正确包含
     let sub = SelectStmt::new("sq_orders")
         .column("user_id")
-        .where_(rsbatis::Column::<i64>::new("sq_orders", "amount").ge(100_i64));
-    let stmt = SelectStmt::for_entity::<User>().where_(User::id().not_in_subquery(&sub));
+        .filter(rsbatis::Column::<i64>::new("sq_orders", "amount").ge(100_i64));
+    let stmt = SelectStmt::for_entity::<User>().filter(User::id().not_in_subquery(&sub));
     let mut got = names(&mut session, stmt);
     got.sort();
     assert_eq!(vec!["b".to_string(), "c".to_string()], got);
@@ -103,12 +103,12 @@ fn exists_correlated_subquery_sees_outer_column() {
     // 会变成 sq_orders 自己的 id 列，结果完全不同（这是本用例真正在守的东西）。
     let sub = SelectStmt::new("sq_orders")
         .column_expr(rsbatis::Expr::lit(1_i64))
-        .where_(rsbatis::Expr::cmp(
+        .filter(rsbatis::Expr::cmp(
             rsbatis::BinOp::Eq,
             rsbatis::Expr::Col("sq_orders", "user_id"),
             rsbatis::Expr::Col("sq_users", "id"),
         ));
-    let stmt = SelectStmt::for_entity::<User>().where_(rsbatis::Expr::exists(&sub));
+    let stmt = SelectStmt::for_entity::<User>().filter(rsbatis::Expr::exists(&sub));
     let mut got = names(&mut session, stmt);
     got.sort();
     assert_eq!(vec!["a".to_string(), "c".to_string()], got);
@@ -120,15 +120,15 @@ fn exists_with_extra_inner_condition() {
     // EXISTS + 子查询内部还有参数：验证外层参数与内层参数没有错位
     let sub = SelectStmt::new("sq_orders")
         .column_expr(rsbatis::Expr::lit(1_i64))
-        .where_(rsbatis::Expr::cmp(
+        .filter(rsbatis::Expr::cmp(
             rsbatis::BinOp::Eq,
             rsbatis::Expr::Col("sq_orders", "user_id"),
             rsbatis::Expr::Col("sq_users", "id"),
         ))
-        .and_where(rsbatis::Column::<i64>::new("sq_orders", "amount").ge(200_i64));
+        .and_filter(rsbatis::Column::<i64>::new("sq_orders", "amount").ge(200_i64));
     let stmt = SelectStmt::for_entity::<User>()
-        .where_(rsbatis::Column::<i32>::new("sq_users", "age").ge(20_i32))
-        .and_where(rsbatis::Expr::exists(&sub));
+        .filter(rsbatis::Column::<i32>::new("sq_users", "age").ge(20_i32))
+        .and_filter(rsbatis::Expr::exists(&sub));
     // 只有用户 a：订单金额 200 的那笔，且 age>=20
     assert_eq!(vec!["a".to_string()], names(&mut session, stmt));
 }
@@ -144,6 +144,6 @@ fn subquery_with_order_and_limit() {
             rsbatis::Order::Desc,
         )
         .limit(1);
-    let stmt = SelectStmt::for_entity::<User>().where_(User::id().in_subquery(&sub));
+    let stmt = SelectStmt::for_entity::<User>().filter(User::id().in_subquery(&sub));
     assert_eq!(vec!["a".to_string()], names(&mut session, stmt));
 }

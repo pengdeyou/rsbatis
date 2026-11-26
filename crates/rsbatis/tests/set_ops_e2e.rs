@@ -107,11 +107,11 @@ fn intersect_then_union_matches_left_associative() {
 }
 
 #[test]
-fn except_with_where_on_first_segment() {
+fn except_with_filteron_first_segment() {
     let mut db = seeded();
     let left = SelectStmt::new("s_a")
         .column("v")
-        .and_where(Expr::cmp(BinOp::Lt, Expr::col("s_a", "v"), Expr::lit(4_i64)));
+        .and_filter(Expr::cmp(BinOp::Lt, Expr::col("s_a", "v"), Expr::lit(4_i64)));
     let stmt = left
         .except(&SelectStmt::new("s_b").column("v"))
         .order_by(Expr::bare_col("v"), SortOrder::Asc);

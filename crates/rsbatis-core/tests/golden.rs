@@ -25,15 +25,15 @@ fn id() -> Column<i64> {
 }
 
 fn render(e: Expr) -> String {
-    select::<User>().where_(e).build(Dialect::Sqlite).text
+    select::<User>().filter(e).build(Dialect::Sqlite).text
 }
 
 fn pg(e: Expr) -> String {
-    select::<User>().where_(e).build(Dialect::Postgres).text
+    select::<User>().filter(e).build(Dialect::Postgres).text
 }
 
 fn my(e: Expr) -> String {
-    select::<User>().where_(e).build(Dialect::MySql).text
+    select::<User>().filter(e).build(Dialect::MySql).text
 }
 
 // ---------- 括号 ----------
@@ -234,7 +234,7 @@ fn postgres_numbers_all_params_in_order() {
         name().like("a%"),
         id().in_([1i64, 2, 3]),
     ]);
-    let sql = select::<User>().where_(e).build(Dialect::Postgres);
+    let sql = select::<User>().filter(e).build(Dialect::Postgres);
     assert_eq!(
         sql.text,
         r#"SELECT * FROM "user" WHERE "age" >= $1 AND "name" LIKE $2 AND "id" IN ($3, $4, $5)"#
@@ -308,11 +308,11 @@ fn multi_column_projection_with_alias() {
 }
 
 #[test]
-fn and_where_chains_conditions() {
+fn and_filter_chains_conditions() {
     let sql = select::<User>()
-        .where_(age().ge(18))
-        .and_where(name().like("a%"))
-        .and_where(Expr::not(age().gt(60)))
+        .filter(age().ge(18))
+        .and_filter(name().like("a%"))
+        .and_filter(Expr::not(age().gt(60)))
         .build(Dialect::Sqlite);
     assert_eq!(
         sql.text,
@@ -326,7 +326,7 @@ fn and_where_chains_conditions() {
 #[test]
 fn null_param_is_bound_as_null() {
     let e = name().eq(Option::<String>::None);
-    let sql = select::<User>().where_(e).build(Dialect::Sqlite);
+    let sql = select::<User>().filter(e).build(Dialect::Sqlite);
     assert_eq!(sql.text, r#"SELECT * FROM "user" WHERE "name" = ?"#);
     assert_eq!(sql.params, vec![Value::Null]);
 }
@@ -335,7 +335,7 @@ fn null_param_is_bound_as_null() {
 fn bool_param_and_literal_forms() {
     let active = Column::<bool>::new("user", "active");
     let sql = select::<User>()
-        .where_(active.eq(true))
+        .filter(active.eq(true))
         .build(Dialect::MySql);
     assert_eq!(sql.text, "SELECT * FROM `user` WHERE `active` = ?");
     assert_eq!(sql.params, vec![Value::Bool(true)]);

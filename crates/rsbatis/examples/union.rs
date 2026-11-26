@@ -50,12 +50,12 @@ fn main() {
     println!("   total = {total}");
 
     // 4) 合并后统一过滤 + 排序 + 截断
-    //    注意：直接 `.union_all(&b).and_where(…)` 的 WHERE 只作用于**第一段**！
+    //    注意：直接 `.union_all(&b).and_filter(…)` 的 WHERE 只作用于**第一段**！
     //    要对整条复合查询过滤，必须把 UNION 包成派生表再在外层过滤。
     let union = online.clone().union_all(&offline);
     let top = SelectStmt::from_subquery(&union, "t")
         .column("amount")
-        .and_where(Expr::cmp(
+        .and_filter(Expr::cmp(
             BinOp::Ge,
             Expr::col("t", "amount"),
             Expr::lit(100_i64),

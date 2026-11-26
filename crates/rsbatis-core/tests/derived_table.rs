@@ -9,7 +9,7 @@ fn inner() -> SelectStmt {
     SelectStmt::new("users")
         .column("id")
         .column("name")
-        .where_(Expr::cmp(
+        .filter(Expr::cmp(
             BinOp::Ge,
             Expr::Col("users", "age"),
             Expr::lit(20_i64),
@@ -29,11 +29,11 @@ fn derived_table_renders_with_alias() {
 }
 
 #[test]
-fn derived_table_params_come_before_where_params() {
+fn derived_table_params_come_before_filterparams() {
     // 子查询 age>=20 在前、外层 t.age>=30 在后：参数顺序必须是 20, 30
     let sql = SelectStmt::from_subquery(&inner(), "t")
         .column("name")
-        .where_(Expr::cmp(
+        .filter(Expr::cmp(
             BinOp::Ge,
             Expr::Col("t", "age"),
             Expr::lit(30_i64),
@@ -84,7 +84,7 @@ fn derived_table_keeps_expression_columns() {
     let sql = SelectStmt::from_subquery(&sub, "o")
         .column("user_id")
         .column("double")
-        .where_(Expr::cmp(
+        .filter(Expr::cmp(
             BinOp::Ge,
             Expr::Col("o", "double"),
             Expr::lit(500_i64),
@@ -109,7 +109,7 @@ fn join_subquery_renders_derived_table() {
     let sub = SelectStmt::new("orders")
         .column("user_id")
         .column("amount")
-        .where_(Expr::cmp(
+        .filter(Expr::cmp(
             BinOp::Ge,
             Expr::Col("orders", "amount"),
             Expr::lit(150_i64),
@@ -137,11 +137,11 @@ fn join_subquery_renders_derived_table() {
 }
 
 #[test]
-fn join_subquery_params_precede_where_params() {
+fn join_subquery_params_precede_filterparams() {
     // SQL 文本顺序是 FROM → JOIN → WHERE，参数必须按这个顺序入列表
     let sub = SelectStmt::new("orders")
         .column("user_id")
-        .where_(Expr::cmp(
+        .filter(Expr::cmp(
             BinOp::Ge,
             Expr::Col("orders", "amount"),
             Expr::lit(150_i64),
@@ -158,7 +158,7 @@ fn join_subquery_params_precede_where_params() {
                 Expr::Col("t", "user_id"),
             ),
         )
-        .where_(Expr::cmp(
+        .filter(Expr::cmp(
             BinOp::Ge,
             Expr::Col("users", "age"),
             Expr::lit(20_i64),

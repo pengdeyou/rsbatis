@@ -130,7 +130,7 @@ fn window_params_come_after_projection_order() {
     // 这条钉的是"窗口不是特殊路径，参数据就按 SELECT 文本顺序走"。
     let stmt = SelectStmt::new("t")
         .column_expr(Expr::ntile(3).as_("b"))
-        .and_where(Expr::cmp(
+        .and_filter(Expr::cmp(
             rsbatis_core::BinOp::Gt,
             Expr::col("t", "id"),
             Expr::lit(10_i64),
@@ -168,9 +168,9 @@ fn dense_rank_and_first_value() {
 }
 
 #[test]
-fn window_inside_where_is_rendered_with_parens() {
+fn window_inside_filteris_rendered_with_parens() {
     // 窗口表达式参与比较时，`OVER (…)` 自带括号，外层不需要再包一层
-    let stmt = SelectStmt::new("t").and_where(Expr::cmp(
+    let stmt = SelectStmt::new("t").and_filter(Expr::cmp(
         rsbatis_core::BinOp::Le,
         Expr::row_number().over(Window::new().order_by(Expr::col("t", "id"), Order::Asc)),
         Expr::lit(3_i64),
@@ -231,8 +231,8 @@ fn joined_query_qualifies_window_columns() {
 }
 
 #[test]
-fn window_in_where_emits_warning() {
-    let stmt = SelectStmt::new("t").and_where(Expr::cmp(
+fn window_in_filteremits_warning() {
+    let stmt = SelectStmt::new("t").and_filter(Expr::cmp(
         rsbatis_core::BinOp::Le,
         Expr::row_number().over(Window::new()),
         Expr::lit(3_i64),
@@ -274,11 +274,11 @@ fn window_in_projection_has_no_warning() {
 }
 
 #[test]
-fn window_in_subquery_where_warns_at_subquery_level() {
+fn window_in_subquery_filterwarns_at_subquery_level() {
     // 子查询里的窗口已经在派生表内部，外层过滤 `t.rn` 是列引用不是窗口，
     // 所以外层不该告警（推荐写法不能被自己的防护误伤）
     let inner = SelectStmt::new("t").column_expr(Expr::row_number().as_("rn"));
-    let outer = SelectStmt::from_subquery(&inner, "t").and_where(Expr::cmp(
+    let outer = SelectStmt::from_subquery(&inner, "t").and_filter(Expr::cmp(
         rsbatis_core::BinOp::Le,
         Expr::col("t", "rn"),
         Expr::lit(2_i64),

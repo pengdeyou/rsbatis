@@ -51,8 +51,8 @@ fn derived_table_filters_twice_on_mysql() {
         .column("id")
         .column("name")
         .column("age")
-        .where_(Column::<i32>::new("v_dv_users", "age").ge(20_i32));
-    let outer = SelectStmt::from_subquery(&inner, "t").where_(Expr::cmp(
+        .filter(Column::<i32>::new("v_dv_users", "age").ge(20_i32));
+    let outer = SelectStmt::from_subquery(&inner, "t").filter(Expr::cmp(
         BinOp::Ge,
         Expr::Col("t", "age"),
         Expr::lit(30_i32),
@@ -73,8 +73,8 @@ fn derived_table_param_order_on_mysql() {
         .column("id")
         .column("name")
         .column("age")
-        .where_(Column::<i32>::new("v_dv_users", "age").ge(20_i32));
-    let outer = SelectStmt::from_subquery(&inner, "t").where_(Expr::cmp(
+        .filter(Column::<i32>::new("v_dv_users", "age").ge(20_i32));
+    let outer = SelectStmt::from_subquery(&inner, "t").filter(Expr::cmp(
         BinOp::Ge,
         Expr::Col("t", "age"),
         Expr::lit(40_i32),
@@ -90,7 +90,7 @@ fn derived_table_count_on_mysql() {
     };
     let inner = SelectStmt::new("v_dv_users")
         .column("id")
-        .where_(Column::<i32>::new("v_dv_users", "age").ge(20_i32));
+        .filter(Column::<i32>::new("v_dv_users", "age").ge(20_i32));
     let count_sql = SelectStmt::from_subquery(&inner, "t").build_count(db.dialect());
     let row = db
         .fetch_one(&count_sql)
@@ -116,7 +116,7 @@ fn derived_table_computed_column_on_mysql() {
             ),
             "double",
         ));
-    let outer = SelectStmt::from_subquery(&inner, "o").where_(Expr::cmp(
+    let outer = SelectStmt::from_subquery(&inner, "o").filter(Expr::cmp(
         BinOp::Ge,
         Expr::Col("o", "double"),
         Expr::lit(250_i64),
@@ -144,7 +144,7 @@ fn join_derived_table_on_mysql() {
     let sub = SelectStmt::new("v_dv_orders")
         .column("user_id")
         .column("amount")
-        .where_(Column::<i64>::new("v_dv_orders", "amount").ge(150_i64));
+        .filter(Column::<i64>::new("v_dv_orders", "amount").ge(150_i64));
     let stmt = SelectStmt::new("v_dv_users").column("name").join_subquery(
         rsbatis::JoinKind::Inner,
         &sub,
@@ -178,7 +178,7 @@ fn join_derived_table_param_order_on_mysql() {
     let sub = SelectStmt::new("v_dv_orders")
         .column("user_id")
         .column("amount")
-        .where_(Column::<i64>::new("v_dv_orders", "amount").ge(150_i64));
+        .filter(Column::<i64>::new("v_dv_orders", "amount").ge(150_i64));
     let stmt = SelectStmt::new("v_dv_users")
         .column("name")
         .join_subquery(
@@ -191,7 +191,7 @@ fn join_derived_table_param_order_on_mysql() {
                 Expr::Col("t", "user_id"),
             ),
         )
-        .where_(Column::<i32>::new("v_dv_users", "age").ge(30_i32));
+        .filter(Column::<i32>::new("v_dv_users", "age").ge(30_i32));
 
     #[derive(FromRow, Debug)]
     struct NameOnly {

@@ -67,7 +67,7 @@ fn full_crud_cycle() {
 
     // ---- 条件查询 + 类型回读 ----
     let adults = d
-        .fetch(&select::<User>().where_(age().ge(18)).build(Dialect::Sqlite))
+        .fetch(&select::<User>().filter(age().ge(18)).build(Dialect::Sqlite))
         .unwrap();
     assert_eq!(2, adults.len());
     assert_eq!(
@@ -80,20 +80,20 @@ fn full_crud_cycle() {
     // ---- UPDATE ----
     let upd = update::<User>()
         .set(age(), 21)
-        .where_(name().eq("张三"))
+        .filter(name().eq("张三"))
         .build(Dialect::Sqlite);
     assert_eq!(1, d.execute(&upd).unwrap());
     let zhang = d
         .fetch(
             &select::<User>()
-                .where_(name().eq("张三"))
+                .filter(name().eq("张三"))
                 .build(Dialect::Sqlite),
         )
         .unwrap();
     assert_eq!(21i32, zhang[0].get_by_name::<i32>("age").unwrap());
 
     // ---- DELETE ----
-    let del = delete::<User>().where_(age().lt(18)).build(Dialect::Sqlite);
+    let del = delete::<User>().filter(age().lt(18)).build(Dialect::Sqlite);
     assert_eq!(1, d.execute(&del).unwrap());
     let left = d.fetch(&select::<User>().build(Dialect::Sqlite)).unwrap();
     assert_eq!(2, left.len(), "删掉李四后应剩 2 行");
@@ -110,7 +110,7 @@ fn null_roundtrip_needs_option() {
     let rows = d
         .fetch(
             &select::<User>()
-                .where_(name().eq("无年龄"))
+                .filter(name().eq("无年龄"))
                 .build(Dialect::Sqlite),
         )
         .unwrap();
@@ -216,18 +216,18 @@ fn in_list_and_between_execute_correctly() {
     seed(&mut d);
 
     let by_in = select::<User>()
-        .where_(id().in_([1i64, 3]))
+        .filter(id().in_([1i64, 3]))
         .build(Dialect::Sqlite);
     assert_eq!(2, d.fetch(&by_in).unwrap().len());
 
     let by_between = select::<User>()
-        .where_(age().between(18, 25))
+        .filter(age().between(18, 25))
         .build(Dialect::Sqlite);
     assert_eq!(1, d.fetch(&by_between).unwrap().len());
 
     // 空 IN 必须返回 0 行（恒假）
     let empty = select::<User>()
-        .where_(id().in_(Vec::<i64>::new()))
+        .filter(id().in_(Vec::<i64>::new()))
         .build(Dialect::Sqlite);
     assert_eq!(0, d.fetch(&empty).unwrap().len());
 }
@@ -238,7 +238,7 @@ fn expr_and_not_execute_correctly() {
     seed(&mut d);
 
     let sql = select::<User>()
-        .where_(Expr::and(vec![age().ge(18), Expr::not(name().like("王%"))]))
+        .filter(Expr::and(vec![age().ge(18), Expr::not(name().like("王%"))]))
         .build(Dialect::Sqlite);
     let rows = d.fetch(&sql).unwrap();
     assert_eq!(1, rows.len());

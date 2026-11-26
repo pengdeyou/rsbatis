@@ -97,14 +97,14 @@ fn order_and_limit_apply_to_whole_union() {
 }
 
 #[test]
-fn where_on_each_segment_filters_independently() {
+fn filteron_each_segment_filters_independently() {
     let mut db = seeded();
-    let left = SelectStmt::new("u_a").column("v").and_where(Expr::cmp(
+    let left = SelectStmt::new("u_a").column("v").and_filter(Expr::cmp(
         BinOp::Lt,
         Expr::col("u_a", "v"),
         Expr::lit(3_i64),
     ));
-    let right = SelectStmt::new("u_b").column("v").and_where(Expr::cmp(
+    let right = SelectStmt::new("u_b").column("v").and_filter(Expr::cmp(
         BinOp::Gt,
         Expr::col("u_b", "v"),
         Expr::lit(3_i64),

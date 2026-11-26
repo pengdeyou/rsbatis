@@ -39,11 +39,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .column("id")
         .column("name")
         .column("age")
-        .where_(Column::<i32>::new("users", "age").ge(20_i32));
+        .filter(Column::<i32>::new("users", "age").ge(20_i32));
 
     let outer = SelectStmt::from_subquery(&inner, "t")
         .column("name")
-        .where_(Expr::cmp(
+        .filter(Expr::cmp(
             BinOp::Ge,
             Expr::Col("t", "age"),
             Expr::lit(30_i32),
@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // ── 2. CTE：给子查询起名，再在 FROM 里引用 ──
-    let cte_stmt = SelectStmt::new("t").cte("t", &inner).where_(Expr::cmp(
+    let cte_stmt = SelectStmt::new("t").cte("t", &inner).filter(Expr::cmp(
         BinOp::Ge,
         Expr::Col("t", "age"),
         Expr::lit(40_i32),
@@ -75,7 +75,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let big_orders = SelectStmt::new("orders")
         .column("user_id")
         .column("amount")
-        .where_(Column::<i64>::new("orders", "amount").ge(150_i64));
+        .filter(Column::<i64>::new("orders", "amount").ge(150_i64));
 
     let joined = SelectStmt::new("users").column("name").join_subquery(
         rsbatis::JoinKind::Inner,

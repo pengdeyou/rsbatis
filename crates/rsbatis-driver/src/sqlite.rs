@@ -204,7 +204,7 @@ mod tests {
         assert_eq!(1, d.execute(&ins).unwrap());
 
         let q = select::<User>()
-            .where_(Column::<i32>::new("user", "age").ge(18))
+            .filter(Column::<i32>::new("user", "age").ge(18))
             .build(Dialect::Sqlite);
         let rows = d.fetch(&q).unwrap();
         assert_eq!(1, rows.len());

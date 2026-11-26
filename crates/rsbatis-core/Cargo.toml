@@ -5,7 +5,6 @@ edition = "2021"
 rust-version = "1.80"
 description = "Expression AST, column proxies and SQL rendering for rsbatis — the SQLAlchemy-Core-like layer of a Rust ORM."
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/pengdeyou/rsbatis"
 keywords = ["orm", "sql", "query-builder", "database"]
 categories = ["database"]
 readme = "README.md"

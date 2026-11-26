@@ -91,7 +91,7 @@ fn top_n_per_group_mysql() {
     let outer = SelectStmt::from_subquery(&inner, "t")
         .column("user_id")
         .column("amount")
-        .and_where(Expr::cmp(BinOp::Le, Expr::col("t", "rn"), Expr::lit(2_i64)))
+        .and_filter(Expr::cmp(BinOp::Le, Expr::col("t", "rn"), Expr::lit(2_i64)))
         // 第二排序键必须是 amount：只按 user_id 排，同一 user 内两行的顺序由引擎决定，
         // 断言会随查询计划变化而红（这条断言就曾在 MariaDB 上把 100 和 200 排反）。
         .order_by(Expr::col("t", "user_id"), SortOrder::Asc)

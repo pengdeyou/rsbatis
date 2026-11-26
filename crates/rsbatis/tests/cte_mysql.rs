@@ -45,8 +45,8 @@ fn cte_filters_twice_on_mysql() {
         .column("id")
         .column("name")
         .column("age")
-        .where_(Column::<i32>::new("v_ct_users", "age").ge(20_i32));
-    let stmt = SelectStmt::new("t").cte("t", &sub).where_(Expr::cmp(
+        .filter(Column::<i32>::new("v_ct_users", "age").ge(20_i32));
+    let stmt = SelectStmt::new("t").cte("t", &sub).filter(Expr::cmp(
         BinOp::Ge,
         Expr::Col("t", "age"),
         Expr::lit(30_i32),
@@ -64,7 +64,7 @@ fn cte_count_on_mysql() {
     };
     let sub = SelectStmt::new("v_ct_users")
         .column("id")
-        .where_(Column::<i32>::new("v_ct_users", "age").ge(20_i32));
+        .filter(Column::<i32>::new("v_ct_users", "age").ge(20_i32));
     let count_sql = SelectStmt::new("t")
         .cte("t", &sub)
         .build_count(db.dialect());
@@ -86,8 +86,8 @@ fn cte_param_order_on_mysql() {
         .column("id")
         .column("name")
         .column("age")
-        .where_(Column::<i32>::new("v_ct_users", "age").ge(20_i32));
-    let stmt = SelectStmt::new("t").cte("t", &sub).where_(Expr::cmp(
+        .filter(Column::<i32>::new("v_ct_users", "age").ge(20_i32));
+    let stmt = SelectStmt::new("t").cte("t", &sub).filter(Expr::cmp(
         BinOp::Ge,
         Expr::Col("t", "age"),
         Expr::lit(40_i32),

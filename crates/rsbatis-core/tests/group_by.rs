@@ -12,7 +12,7 @@ fn group_by_and_having_render_in_order() {
     let sql = SelectStmt::new("orders")
         .column("user_id")
         .column_expr(Expr::count_star().as_("cnt"))
-        .where_(Expr::cmp(
+        .filter(Expr::cmp(
             BinOp::Ge,
             Expr::Col("orders", "amount"),
             Expr::lit(10_i64),
@@ -93,7 +93,7 @@ fn count_with_group_by_wraps_subquery() {
 fn count_without_group_by_stays_flat() {
     let sql = SelectStmt::new("orders")
         .column("user_id")
-        .where_(Expr::cmp(
+        .filter(Expr::cmp(
             BinOp::Ge,
             Expr::Col("orders", "amount"),
             Expr::lit(10_i64),

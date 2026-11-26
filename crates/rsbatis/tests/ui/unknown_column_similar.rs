@@ -1,4 +1,4 @@
-use rsbatis::{where_, Entity};
+use rsbatis::{filter, Entity};
 
 #[derive(Entity)]
 #[rsbatis(table = "users")]
@@ -9,5 +9,5 @@ struct User {
 
 fn main() {
     // 近似拼写：rustc 的 E0599 在名字足够接近时会主动给出候选，这条用来量化"候选覆盖率"
-    let _ = where_!(User.ag == 1);
+    let _ = filter!(User.ag == 1);
 }

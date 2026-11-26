@@ -65,7 +65,7 @@ fn main() {
     let outer = SelectStmt::from_subquery(&inner, "t")
         .column("user_id")
         .column("amount")
-        .and_where(Expr::cmp(BinOp::Le, Expr::col("t", "rn"), Expr::lit(2_i64)))
+        .and_filter(Expr::cmp(BinOp::Le, Expr::col("t", "rn"), Expr::lit(2_i64)))
         .order_by(Expr::col("t", "user_id"), SortOrder::Asc)
         .order_by(Expr::col("t", "amount"), SortOrder::Desc);
     println!("\n2) 每组 Top-2\nSQL: {}\n", outer.build(db.dialect()).text);

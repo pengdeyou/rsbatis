@@ -35,7 +35,7 @@ fn numbers(limit: i64) -> SelectStmt {
     let base = SelectStmt::no_table().column_expr(Expr::lit(1_i64).as_("n"));
     let step = SelectStmt::from_cte("nums")
         .column_expr(Expr::arith(ArithOp::Add, Expr::col("nums", "n"), Expr::lit(1_i64)).as_("n"))
-        .and_where(Expr::cmp(
+        .and_filter(Expr::cmp(
             BinOp::Lt,
             Expr::col("nums", "n"),
             Expr::lit(limit),
@@ -73,7 +73,7 @@ fn recursive_tree_mysql() {
         .column("id")
         .column("parent_id")
         .column("name")
-        .and_where(Expr::cmp(
+        .and_filter(Expr::cmp(
             BinOp::Eq,
             Expr::col("v_tree", "id"),
             Expr::lit(1_i64),
@@ -130,7 +130,7 @@ fn recursive_cte_with_plain_cte_mysql() {
     let base = SelectStmt::no_table().column_expr(Expr::lit(1_i64).as_("n"));
     let step = SelectStmt::from_cte("nums")
         .column_expr(Expr::arith(ArithOp::Add, Expr::col("nums", "n"), Expr::lit(1_i64)).as_("n"))
-        .and_where(Expr::cmp(
+        .and_filter(Expr::cmp(
             BinOp::Lt,
             Expr::col("nums", "n"),
             Expr::lit(3_i64),

@@ -32,7 +32,7 @@ fn self_join_uses_two_aliases() {
             "m",
             manager_id().of_table("u").eq_col(id().of_table("m")),
         )
-        .where_(age().of_table("u").ge(18))
+        .filter(age().of_table("u").ge(18))
         .order_by(id().of_table("u").expr(), Order::Asc)
         .build(Dialect::Sqlite);
 
@@ -52,7 +52,7 @@ fn alias_without_join_still_qualifies() {
     // 只给主表起别名也必须走限定列名，否则投影和过滤会指向裸表名
     let sql = select::<User>()
         .from_alias("u")
-        .where_(age().of_table("u").ge(18))
+        .filter(age().of_table("u").ge(18))
         .build(Dialect::Sqlite);
     assert_eq!(
         sql.text,

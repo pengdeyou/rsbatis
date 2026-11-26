@@ -6,7 +6,7 @@
 #![allow(dead_code)]
 
 use rsbatis::{
-    delete, insert, select, update, where_, Dialect, Entity, FromRow, Session, SqliteDriver,
+    delete, insert, select, update, filter, Dialect, Entity, FromRow, Session, SqliteDriver,
 };
 
 #[derive(Entity, FromRow)]
@@ -67,7 +67,7 @@ fn session_crud_to_models() {
         db.execute(
             update::<User>()
                 .set(User::age(), 21)
-                .where_(User::name().eq("张三"))
+                .filter(User::name().eq("张三"))
                 .build(Dialect::Sqlite)
         )
         .unwrap()
@@ -76,7 +76,7 @@ fn session_crud_to_models() {
         1,
         db.execute(
             delete::<User>()
-                .where_(where_!(User.age < 18))
+                .filter(filter!(User.age < 18))
                 .build(Dialect::Sqlite)
         )
         .unwrap()

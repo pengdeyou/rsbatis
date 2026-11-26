@@ -87,7 +87,7 @@ fn top_n_per_group_via_derived_table() {
     let outer = SelectStmt::from_subquery(&inner, "t")
         .column("user_id")
         .column("amount")
-        .and_where(Expr::cmp(BinOp::Le, Expr::col("t", "rn"), Expr::lit(2_i64)));
+        .and_filter(Expr::cmp(BinOp::Le, Expr::col("t", "rn"), Expr::lit(2_i64)));
 
     #[derive(FromRow, Debug)]
     struct Top {

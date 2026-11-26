@@ -57,7 +57,7 @@ impl<C> HasMany<C> {
     ///
     /// ```ignore
     /// // 有文章的用户
-    /// let stmt = select::<User>().where_(Post::user().exists_filter(User::id()));
+    /// let stmt = select::<User>().filter(Post::user().exists_filter(User::id()));
     /// ```
     ///
     /// `parent_col` 必须是**外层**查询里那张父表的列。外层用了别名时记得
@@ -79,7 +79,7 @@ impl<C> HasMany<C> {
         // 而描述符已经把子表名带在 fk 上了，两者必须一致（`ManyToMany` 那边专门校验过）。
         SelectStmt::new(self.fk.base_table())
             .column_expr(Expr::lit(1_i64).as_("__exists"))
-            .and_where(Expr::cmp(BinOp::Eq, self.fk.expr(), parent_col.expr()))
+            .and_filter(Expr::cmp(BinOp::Eq, self.fk.expr(), parent_col.expr()))
     }
 }
 
@@ -216,7 +216,7 @@ impl<C> ManyToMany<C> {
         let sub = SelectStmt::new(self.link_table)
             .column_expr(Expr::lit(1_i64).as_("__exists"))
             .join_table(JoinKind::Inner, self.child_col.base_table(), on)
-            .and_where(Expr::cmp(
+            .and_filter(Expr::cmp(
                 BinOp::Eq,
                 self.link_parent.expr(),
                 parent_col.expr(),
@@ -260,7 +260,7 @@ impl<D: Driver> Session<D> {
             return Ok(parents.iter().map(|_| Vec::new()).collect());
         }
 
-        let rows: Vec<C> = self.fetch_all(select::<C>().where_(rel.fk.in_(keys.clone())))?;
+        let rows: Vec<C> = self.fetch_all(select::<C>().filter(rel.fk.in_(keys.clone())))?;
 
         let mut buckets: HashMap<i64, Vec<C>> = HashMap::new();
         for row in rows {
@@ -293,7 +293,7 @@ impl<D: Driver> Session<D> {
             return Ok(parents.iter().map(|_| None).collect());
         }
 
-        let rows: Vec<C> = self.fetch_all(select::<C>().where_(rel.fk.in_(keys)))?;
+        let rows: Vec<C> = self.fetch_all(select::<C>().filter(rel.fk.in_(keys)))?;
 
         let mut buckets: HashMap<i64, C> = HashMap::new();
         for row in rows {
@@ -326,7 +326,7 @@ impl<D: Driver> Session<D> {
             return Ok(Vec::new());
         }
 
-        let rows: Vec<P> = self.fetch_all(select::<P>().where_(rel.parent_col.in_(keys)))?;
+        let rows: Vec<P> = self.fetch_all(select::<P>().filter(rel.parent_col.in_(keys)))?;
         let mut by_key: HashMap<i64, P> = HashMap::new();
         for row in rows {
             by_key.insert((rel.key_of)(&row), row);
@@ -375,7 +375,7 @@ impl<D: Driver> Session<D> {
         let link_stmt = SelectStmt::new(rel.link_table)
             .column(rel.link_parent.name())
             .column(rel.link_child.name())
-            .and_where(rel.link_parent.in_(keys));
+            .and_filter(rel.link_parent.in_(keys));
         let link_rows: Vec<Row> = self.fetch(link_stmt.build(self.dialect()))?;
 
         // 关联表一条都没命中时立刻返回：省掉第二次往返。
@@ -392,7 +392,7 @@ impl<D: Driver> Session<D> {
 
         // 第二步：子表。用子表自己的列做 `IN`。
         let child_keys = unique_keys(links.iter().map(|(_, c)| *c));
-        let children: Vec<C> = self.fetch_all(select::<C>().where_(rel.child_col.in_(child_keys)))?;
+        let children: Vec<C> = self.fetch_all(select::<C>().filter(rel.child_col.in_(child_keys)))?;
 
         let mut by_id: HashMap<i64, C> = HashMap::new();
         for row in children {

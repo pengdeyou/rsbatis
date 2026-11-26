@@ -68,7 +68,7 @@ fn update_macro_multiple_fields() {
 }
 
 #[test]
-fn update_macro_without_where_updates_all() {
+fn update_macro_without_filterupdates_all() {
     let mut db = setup();
     let stmt = update!(User { age: 0 });
     db.execute(stmt.build(db.dialect())).unwrap();
@@ -86,7 +86,7 @@ fn delete_macro_with_where() {
 }
 
 #[test]
-fn delete_macro_without_where_removes_all() {
+fn delete_macro_without_filterremoves_all() {
     let mut db = setup();
     let stmt = delete!(User);
     db.execute(stmt.build(db.dialect())).unwrap();

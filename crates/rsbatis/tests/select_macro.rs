@@ -2,7 +2,7 @@
 
 #![allow(dead_code)]
 
-use rsbatis::{select, where_, Dialect, Entity};
+use rsbatis::{select, filter, Dialect, Entity};
 
 #[derive(Entity)]
 #[rsbatis(table = "users")]
@@ -23,7 +23,7 @@ fn bare_entity() {
 }
 
 #[test]
-fn where_only() {
+fn filteronly() {
     let s = select! { User where User.age >= 18 };
     assert_eq!(
         r#"SELECT * FROM "users" WHERE "age" >= ?"#,
@@ -32,7 +32,7 @@ fn where_only() {
 }
 
 #[test]
-fn with_where_order_limit_offset() {
+fn with_filterorder_limit_offset() {
     let s = select! { User where User.age >= 18 order_by User.age desc limit 10 offset 5 };
     assert_eq!(
         r#"SELECT * FROM "users" WHERE "age" >= ? ORDER BY "age" DESC LIMIT 10 OFFSET 5"#,
@@ -53,7 +53,7 @@ fn multi_order_and_distinct() {
 }
 
 #[test]
-fn where_inside_select_supports_full_expression() {
+fn filterinside_select_supports_full_expression() {
     // select! 内部的 where 段复用同一套 rewrite，所以括号/IS NULL/算术都可用
     let s = select! { User where (User.age >= 18 && User.name.like("张%")) || User.id == 1i64 };
     assert_eq!(
@@ -74,7 +74,7 @@ fn equivalent_to_builder_chain() {
     let macro_sql =
         select! { User where User.age >= 18 order_by User.age desc limit 10 }.build(Dialect::MySql);
     let builder_sql = select::<User>()
-        .where_(where_!(User.age >= 18))
+        .filter(filter!(User.age >= 18))
         .order_by(User::age().expr(), rsbatis::Order::Desc)
         .limit(10)
         .build(Dialect::MySql);

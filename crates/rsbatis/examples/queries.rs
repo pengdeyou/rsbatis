@@ -9,7 +9,7 @@
 #![allow(dead_code)]
 
 use rsbatis::{
-    delete, insert, select, update, where_, BelongsTo, Dialect, Entity, FromRow, HasMany,
+    delete, insert, select, update, filter, BelongsTo, Dialect, Entity, FromRow, HasMany,
     HasOne, ManyToMany, PageRequest, Session, Snowflake, SqliteDriver,
 };
 
@@ -122,13 +122,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     assert!(page.has_next());
 
     // ---------- 4. 条件查询 ----------
-    // `where_!` 只做语法重写，列名与值类型仍由 rustc 检查
+    // `filter!` 只做语法重写，列名与值类型仍由 rustc 检查
     let adults: Vec<User> = db.fetch_all(&select! {
         User where User.age >= 18 && User.name.like("张%")
     })?;
     assert_eq!(adults.len(), 1);
 
-    let builder = select::<User>().where_(where_!(
+    let builder = select::<User>().filter(filter!(
         User.age.between(18, 30) || User.name.in_(["李四"])
     ));
     assert_eq!(db.fetch_all::<User>(&builder)?.len(), 3);
@@ -153,7 +153,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     db.execute(
         update::<User>()
             .set(User::age(), 21)
-            .where_(where_!(User.id == 1))
+            .filter(filter!(User.id == 1))
             .build(Dialect::Sqlite),
     )?;
 
@@ -161,14 +161,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let affected = db.execute(
         update::<User>()
             .set(User::age(), 18)
-            .where_(where_!(User.age < 18))
+            .filter(filter!(User.age < 18))
             .build(Dialect::Sqlite),
     )?;
     assert!(affected >= 1);
 
     // ---------- 8. 删除 ----------
-    db.execute(delete::<User>().where_(where_!(User.id == 4)).build(Dialect::Sqlite))?;
-    // 按条件删除同理：delete::<User>().where_(where_!(User.age < 0))
+    db.execute(delete::<User>().filter(filter!(User.id == 4)).build(Dialect::Sqlite))?;
+    // 按条件删除同理：delete::<User>().filter(filter!(User.age < 0))
 
     // ---------- 9. 一对一 ----------
     // 与一对多同一条 IN 查询，父侧只留一个：返回 Option<C>。

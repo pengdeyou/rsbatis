@@ -99,7 +99,7 @@ fn full_crud_on_mysql() {
     let adults = conn
         .fetch(
             &select::<RsbUser>()
-                .where_(age().ge(18))
+                .filter(age().ge(18))
                 .build(Dialect::MySql),
         )
         .expect("select adults");
@@ -117,13 +117,13 @@ fn full_crud_on_mysql() {
     // ---- UPDATE ----
     let upd = update::<RsbUser>()
         .set(age(), 21)
-        .where_(name().eq("张三"))
+        .filter(name().eq("张三"))
         .build(Dialect::MySql);
     assert_eq!(1, conn.execute(&upd).unwrap(), "应更新 1 行");
 
     // ---- DELETE ----
     let del = delete::<RsbUser>()
-        .where_(age().lt(18))
+        .filter(age().lt(18))
         .build(Dialect::MySql);
     assert_eq!(1, conn.execute(&del).unwrap(), "应删除 1 行");
     assert_eq!(
@@ -230,7 +230,7 @@ fn null_and_in_and_between() {
     let rows = conn
         .fetch(
             &select::<RsbUser>()
-                .where_(name().eq("无年龄"))
+                .filter(name().eq("无年龄"))
                 .build(Dialect::MySql),
         )
         .unwrap();
@@ -242,20 +242,20 @@ fn null_and_in_and_between() {
 
     // IN
     let in_sql = select::<RsbUser>()
-        .where_(id().in_([1i64, 2]))
+        .filter(id().in_([1i64, 2]))
         .build(Dialect::MySql);
     let got = conn.fetch(&in_sql).unwrap();
     assert_eq!(2, got.len());
 
     // 空 IN → 恒假
     let empty_in = select::<RsbUser>()
-        .where_(id().in_(Vec::<i64>::new()))
+        .filter(id().in_(Vec::<i64>::new()))
         .build(Dialect::MySql);
     assert_eq!(0, conn.fetch(&empty_in).unwrap().len());
 
     // BETWEEN
     let between = select::<RsbUser>()
-        .where_(age().between(18, 25))
+        .filter(age().between(18, 25))
         .build(Dialect::MySql);
     assert_eq!(1, conn.fetch(&between).unwrap().len());
 }
@@ -309,7 +309,7 @@ fn expr_and_order_by_on_mysql() {
 
     let sql = select::<RsbUser>()
         .column("name")
-        .where_(Expr::and(vec![age().ge(18), Expr::not(name().like("王%"))]))
+        .filter(Expr::and(vec![age().ge(18), Expr::not(name().like("王%"))]))
         .order_by(age().expr(), rsbatis_core::Order::Desc)
         .build(Dialect::MySql);
     let rows = conn.fetch(&sql).unwrap();

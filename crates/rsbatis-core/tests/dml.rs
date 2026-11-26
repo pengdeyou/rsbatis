@@ -100,11 +100,11 @@ fn insert_i32_into_bigint_column_promotes() {
 // ---------- UPDATE ----------
 
 #[test]
-fn update_sets_then_where_in_order() {
+fn update_sets_then_filterin_order() {
     let sql = update::<User>()
         .set(age(), 25)
         .set(name(), "lisi")
-        .where_(id().eq(1i64))
+        .filter(id().eq(1i64))
         .build(Dialect::Sqlite);
     assert_eq!(
         sql.text,
@@ -118,10 +118,10 @@ fn update_sets_then_where_in_order() {
 }
 
 #[test]
-fn update_postgres_numbers_set_and_where_continuously() {
+fn update_postgres_numbers_set_and_filter_continuously() {
     let sql = update::<User>()
         .set(age(), 25)
-        .where_(Expr::and(vec![id().gt(0i64), name().like("a%")]))
+        .filter(Expr::and(vec![id().gt(0i64), name().like("a%")]))
         .build(Dialect::Postgres);
     assert_eq!(
         sql.text,
@@ -130,7 +130,7 @@ fn update_postgres_numbers_set_and_where_continuously() {
 }
 
 #[test]
-fn update_without_where_warns() {
+fn update_without_filterwarns() {
     let sql = update::<User>().set(age(), 25).build(Dialect::Sqlite);
     assert_eq!(sql.text, r#"UPDATE "user" SET "age" = ?"#);
     assert!(sql.has_warning());
@@ -148,14 +148,14 @@ fn update_without_set_warns() {
 #[test]
 fn delete_with_condition() {
     let sql = delete::<User>()
-        .where_(Expr::or(vec![age().lt(18), name().eq("spam")]))
+        .filter(Expr::or(vec![age().lt(18), name().eq("spam")]))
         .build(Dialect::MySql);
     assert_eq!(sql.text, "DELETE FROM `user` WHERE `age` < ? OR `name` = ?");
     assert_eq!(sql.params.len(), 2);
 }
 
 #[test]
-fn delete_without_where_warns_but_still_builds() {
+fn delete_without_filterwarns_but_still_builds() {
     let sql = delete::<User>().build(Dialect::Sqlite);
     assert_eq!(sql.text, r#"DELETE FROM "user""#);
     assert!(sql.has_warning());
@@ -165,7 +165,7 @@ fn delete_without_where_warns_but_still_builds() {
 #[test]
 fn delete_returning_on_sqlite() {
     let sql = delete::<User>()
-        .where_(id().eq(1i64))
+        .filter(id().eq(1i64))
         .returning(["id"])
         .build(Dialect::Sqlite);
     assert_eq!(

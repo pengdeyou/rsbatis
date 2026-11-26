@@ -24,7 +24,7 @@ fn inner_join_auto_projects_with_prefixed_alias() {
             JoinKind::Inner,
             col::<i64>("orders", "user_id").eq_col(col::<i64>("users", "id")),
         )
-        .where_(col::<i32>("users", "age").ge(18))
+        .filter(col::<i32>("users", "age").ge(18))
         .order_by(col::<i64>("orders", "amount").expr(), Order::Desc)
         .build(Dialect::Sqlite);
 
@@ -65,7 +65,7 @@ fn mysql_uses_backticks_and_left_join_with_paging() {
 fn single_table_keeps_star_and_bare_column_names() {
     // 回归：没有 join 时行为必须和以前逐字节一致
     let sql = select::<Users>()
-        .where_(col::<i32>("users", "age").ge(18))
+        .filter(col::<i32>("users", "age").ge(18))
         .build(Dialect::Sqlite);
     assert_eq!("SELECT * FROM \"users\" WHERE \"age\" >= ?", sql.text);
 }

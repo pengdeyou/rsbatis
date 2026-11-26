@@ -4,5 +4,5 @@ error[E0599]: no associated function or constant named `nmae` found for struct `
  5 | struct User {
    | ----------- associated function or constant `nmae` not found for this struct
 ...
-12 |     let _ = where_!(User.nmae == "x");
+12 |     let _ = filter!(User.nmae == "x");
    |                          ^^^^ associated function or constant not found in `User`

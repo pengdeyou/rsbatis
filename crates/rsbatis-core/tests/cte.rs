@@ -10,7 +10,7 @@ fn young() -> SelectStmt {
         .column("id")
         .column("name")
         .column("age")
-        .where_(Expr::cmp(
+        .filter(Expr::cmp(
             BinOp::Ge,
             Expr::Col("users", "age"),
             Expr::lit(18_i64),
@@ -32,7 +32,7 @@ fn single_cte_renders_prefixed() {
 
 #[test]
 fn multiple_ctes_render_comma_separated() {
-    let old = SelectStmt::new("users").column("id").where_(Expr::cmp(
+    let old = SelectStmt::new("users").column("id").filter(Expr::cmp(
         BinOp::Ge,
         Expr::Col("users", "age"),
         Expr::lit(60_i64),
@@ -57,11 +57,11 @@ fn multiple_ctes_render_comma_separated() {
 }
 
 #[test]
-fn cte_params_precede_where_params() {
+fn cte_params_precede_filterparams() {
     // CTE 18 → 外层 age>=30 的顺序必须是 18、30
     let sql = SelectStmt::new("young")
         .cte("young", &young())
-        .where_(Expr::cmp(
+        .filter(Expr::cmp(
             BinOp::Ge,
             Expr::Col("young", "age"),
             Expr::lit(30_i64),
@@ -101,7 +101,7 @@ fn cte_columns_are_qualified() {
     let sql = SelectStmt::new("young")
         .cte("young", &young())
         .column("name")
-        .where_(Expr::cmp(
+        .filter(Expr::cmp(
             BinOp::Ge,
             Expr::Col("young", "age"),
             Expr::lit(30_i64),

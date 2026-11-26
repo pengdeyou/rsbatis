@@ -4,7 +4,7 @@
 //! 或者 `select!(User)` 这种根本不成立的写法），读者会照着写进项目再撞编译错误。
 //! 把这个示例放进 `examples/`，CI 的 `cargo build --examples` 就会替文档把关。
 
-use rsbatis::{insert, select, where_, Dialect, Entity, FromRow, Session, SqliteDriver};
+use rsbatis::{insert, select, filter, Dialect, Entity, FromRow, Session, SqliteDriver};
 
 #[derive(Entity, FromRow, Clone, Debug)]
 #[rsbatis(table = "users")]
@@ -37,7 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // 或者 builder + 表达式宏
-    let stmt = select::<User>().where_(where_!(User.age >= 18 && User.name.like("张%")));
+    let stmt = select::<User>().filter(filter!(User.age >= 18 && User.name.like("张%")));
     let rows = db.fetch(&stmt)?;
     println!("{} rows via builder", rows.len());
 

@@ -49,8 +49,8 @@ fn derived_table_filters_twice() {
         .column("id")
         .column("name")
         .column("age")
-        .where_(Column::<i32>::new("dv_users", "age").ge(20_i32));
-    let outer = SelectStmt::from_subquery(&inner, "t").where_(Expr::cmp(
+        .filter(Column::<i32>::new("dv_users", "age").ge(20_i32));
+    let outer = SelectStmt::from_subquery(&inner, "t").filter(Expr::cmp(
         BinOp::Ge,
         Expr::Col("t", "age"),
         Expr::lit(30_i32),
@@ -69,8 +69,8 @@ fn derived_table_param_order_is_observable() {
         .column("id")
         .column("name")
         .column("age")
-        .where_(Column::<i32>::new("dv_users", "age").ge(20_i32));
-    let outer = SelectStmt::from_subquery(&inner, "t").where_(Expr::cmp(
+        .filter(Column::<i32>::new("dv_users", "age").ge(20_i32));
+    let outer = SelectStmt::from_subquery(&inner, "t").filter(Expr::cmp(
         BinOp::Ge,
         Expr::Col("t", "age"),
         Expr::lit(40_i32),
@@ -93,7 +93,7 @@ fn derived_table_with_computed_column() {
             ),
             "double",
         ));
-    let outer = SelectStmt::from_subquery(&inner, "o").where_(Expr::cmp(
+    let outer = SelectStmt::from_subquery(&inner, "o").filter(Expr::cmp(
         BinOp::Ge,
         Expr::Col("o", "double"),
         Expr::lit(250_i64),
@@ -119,7 +119,7 @@ fn derived_table_count_matches() {
     let mut db = setup();
     let inner = SelectStmt::new("dv_users")
         .column("id")
-        .where_(Column::<i32>::new("dv_users", "age").ge(20_i32));
+        .filter(Column::<i32>::new("dv_users", "age").ge(20_i32));
     let count_sql = SelectStmt::from_subquery(&inner, "t").build_count(db.dialect());
     let row = db
         .fetch_one(&count_sql)
@@ -137,7 +137,7 @@ fn derived_table_projects_star_and_maps() {
         .column("id")
         .column("name")
         .column("age")
-        .where_(Column::<i32>::new("dv_users", "age").ge(30_i32));
+        .filter(Column::<i32>::new("dv_users", "age").ge(30_i32));
     let mut got = names(&mut db, SelectStmt::from_subquery(&inner, "t"));
     got.sort();
     assert_eq!(vec!["b".to_string(), "c".to_string()], got);
@@ -155,7 +155,7 @@ fn join_derived_table_returns_joined_rows() {
     let sub = SelectStmt::new("dv_orders")
         .column("user_id")
         .column("amount")
-        .where_(Column::<i64>::new("dv_orders", "amount").ge(150_i64));
+        .filter(Column::<i64>::new("dv_orders", "amount").ge(150_i64));
     let stmt = SelectStmt::new("dv_users").column("name").join_subquery(
         rsbatis::JoinKind::Inner,
         &sub,
@@ -181,7 +181,7 @@ fn join_derived_table_param_order_is_observable() {
     let sub = SelectStmt::new("dv_orders")
         .column("user_id")
         .column("amount")
-        .where_(Column::<i64>::new("dv_orders", "amount").ge(150_i64));
+        .filter(Column::<i64>::new("dv_orders", "amount").ge(150_i64));
     let stmt = SelectStmt::new("dv_users")
         .column("name")
         .join_subquery(
@@ -194,7 +194,7 @@ fn join_derived_table_param_order_is_observable() {
                 Expr::Col("t", "user_id"),
             ),
         )
-        .where_(Column::<i32>::new("dv_users", "age").ge(30_i32));
+        .filter(Column::<i32>::new("dv_users", "age").ge(30_i32));
     // 金额 >=150 只有 user1（age=20），再要求 age>=30 → 空集
     let rows = db.fetch_all::<NameOnly>(&stmt.build(db.dialect())).unwrap();
     assert!(rows.is_empty(), "参数错位会在这里露馅");

@@ -50,7 +50,7 @@ fn main() {
     let mut others = SelectStmt::new("emp")
         .column("id")
         .except(&oncall_ids);
-    let late = SelectStmt::new("emp").column("id").and_where(Expr::cmp(
+    let late = SelectStmt::new("emp").column("id").and_filter(Expr::cmp(
         BinOp::Gt,
         Expr::col("emp", "team"),
         Expr::lit(1_i64),
