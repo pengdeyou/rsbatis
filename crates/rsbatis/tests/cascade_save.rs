@@ -149,20 +149,20 @@ fn insert_tree_empty_input() {
 }
 
 #[test]
-fn insert_one_id_uses_returning_and_returns_real_pk() {
+fn insert_uses_returning_and_returns_real_pk() {
     let mut db = fresh();
     let id1 = db
-        .insert_one_id(&Dept { id: None, name: "A".into() })
+        .insert(&Dept { id: None, name: "A".into() })
         .unwrap();
     let id2 = db
-        .insert_one_id(&Dept { id: None, name: "B".into() })
+        .insert(&Dept { id: None, name: "B".into() })
         .unwrap();
     assert_eq!(1, id1);
     assert_eq!(2, id2);
 
     // 走 RETURNING 的话，给一个显式主键也能原样拿回
     let id_y = db
-        .insert_one_id(&Dept { id: Some(77), name: "Y".into() })
+        .insert(&Dept { id: Some(77), name: "Y".into() })
         .unwrap();
     assert_eq!(77, id_y, "RETURNING 路径拿的是真实主键，不是自增计数器");
 }
@@ -199,7 +199,7 @@ fn sqlite_without_declared_pk_is_rejected() {
         .unwrap();
     // 没有 #[rsbatis(primary_key)]：SQLite 上拒绝回填，而不是给出 rowid 当主键
     let err = db
-        .insert_one_id(&NoPk { id: None, note: "x".into() })
+        .insert(&NoPk { id: None, note: "x".into() })
         .unwrap_err();
     assert!(
         err.message.contains("没有声明主键"),

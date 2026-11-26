@@ -51,7 +51,7 @@ struct OrderOpt {
 }
 
 /// 自增主键写成 `Option<i64>`：`None` = "交给数据库生成"，`Some(v)` = 显式主键。
-/// 写成 `i64` 就只能显式给值——`add`/`insert_one_id` 会把 `0` 当成你要插的主键。
+/// 写成 `i64` 就只能显式给值——`add`/`insert` 会把 `0` 当成你要插的主键。
 #[derive(Entity, FromRow, Clone, Debug)]
 #[rsbatis(table = "logs")]
 struct Log {
@@ -137,8 +137,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 方式 A：对象式（字段值来自模型，主键自增）
     let new_user = User { id: 4, name: "赵六".into(), age: Some(25) };
     db.add(&new_user)?;
-    // 需要数据库生成的主键时用 insert_one_id（实体主键必须是 Option<i64>）
-    let id: i64 = db.insert_one_id(&Log { id: None, msg: "started".into() })?;
+    // 需要数据库生成的主键时用 insert（实体主键必须是 Option<i64>）
+    let id: i64 = db.insert(&Log { id: None, msg: "started".into() })?;
     assert_eq!(id, 1);
 
     // 方式 B：语句式（可写 NULL、可加 ON CONFLICT）

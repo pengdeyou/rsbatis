@@ -103,7 +103,7 @@ impl<D: Driver> Session<D> {
     /// 防御性代码 —— SQLite 的 `last_insert_rowid()` 是**内部 rowid**，与
     /// `TEXT PRIMARY KEY` 这类业务主键毫无关系；MySQL 在没有自增列的表上插入后
     /// 该值根本不变（返回上一次的）。两种情况都会静默给出一个"看起来像 id"的数。
-    pub fn insert_one_id<E: rsbatis_core::Entity>(&mut self, model: &E) -> Result<i64, DriverError> {
+    pub fn insert<E: rsbatis_core::Entity>(&mut self, model: &E) -> Result<i64, DriverError> {
         let mut cols: Vec<(&'static str, rsbatis_core::Value)> = Vec::new();
         model.column_values(&mut cols);
         if cols.is_empty() {
@@ -154,7 +154,7 @@ impl<D: Driver> Session<D> {
                 ErrorKind::Unsupported,
                 format!(
                     "{} 没有声明主键，SQLite 上无法可靠回填自增 id：请给主键字段加 \
-                     #[rsbatis(primary_key)]，insert_one_id 会走 INSERT … RETURNING 拿回真实主键",
+                     #[rsbatis(primary_key)]，insert 会走 INSERT … RETURNING 拿回真实主键",
                     E::TABLE
                 ),
             ));
@@ -211,7 +211,7 @@ impl<D: Driver> Session<D> {
         let mut parent_count = 0usize;
         let mut child_count = 0usize;
         for p in parents.iter_mut() {
-            let id = tx.insert_one_id(&*p)?;
+            let id = tx.insert(&*p)?;
             set_id(p, id);
             parent_count += 1;
             // 必须在 set_id **之后**取子：闭包里要用刚回填的 id
@@ -383,9 +383,9 @@ impl<'a, D: Driver> Transaction<'a, D> {
     }
 
     /// 事务内的 upsert。
-    /// 事务内插入并取回主键（转发到 `Session::insert_one_id`，同一个连接）。
-    pub fn insert_one_id<E: rsbatis_core::Entity>(&mut self, model: &E) -> Result<i64, DriverError> {
-        self.session.insert_one_id(model)
+    /// 事务内插入并取回主键（转发到 `Session::insert`，同一个连接）。
+    pub fn insert<E: rsbatis_core::Entity>(&mut self, model: &E) -> Result<i64, DriverError> {
+        self.session.insert(model)
     }
 
     pub fn save<E: rsbatis_core::Entity>(&mut self, model: &E) -> Result<usize, DriverError> {

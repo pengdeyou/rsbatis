@@ -54,29 +54,29 @@ fn fresh() -> Option<Session<MySqlDriver>> {
 }
 
 #[test]
-fn insert_one_id_autoincrement() {
+fn insert_autoincrement() {
     let mut db = match fresh() {
         Some(d) => d,
         None => return,
     };
     let a = db
-        .insert_one_id(&Dept { id: None, name: "A".into() })
+        .insert(&Dept { id: None, name: "A".into() })
         .unwrap();
     let b = db
-        .insert_one_id(&Dept { id: None, name: "B".into() })
+        .insert(&Dept { id: None, name: "B".into() })
         .unwrap();
     assert_eq!((1, 2), (a, b));
 }
 
 #[test]
-fn insert_one_id_explicit_pk_returns_that_value() {
+fn insert_explicit_pk_returns_that_value() {
     let mut db = match fresh() {
         Some(d) => d,
         None => return,
     };
     // 显式主键：自增没被触发，LAST_INSERT_ID 不会变；此时不能误判成失败
     let got = db
-        .insert_one_id(&Dept {
+        .insert(&Dept {
             id: Some(50),
             name: "显式".into(),
         })
@@ -152,7 +152,7 @@ fn table_without_autoincrement_reports_zero_instead_of_lying() {
     // k_noauto 有 id 列但不是自增：归零后插入，读回来仍是 0 → 必须报错，
     // 不能把 0 当成主键回填给子表（那会让所有子都挂到 id=0 上）
     let err = db
-        .insert_one_id(&NoAuto {
+        .insert(&NoAuto {
             id: None,
             name: "x".into(),
         })
