@@ -35,7 +35,7 @@ pub struct User {
 - `#[rsbatis(table = "...")]` names the table. Omitted, it falls back to the struct name in
   `snake_case`, which is usually not what you want for a plural table.
 - `#[rsbatis(primary_key)]` marks the key. Without it `save()` refuses to run (it cannot guess an
-  upsert conflict target) and `insert_one_id()` cannot use `RETURNING`.
+  upsert conflict target) and `insert()` cannot use `RETURNING`.
 - **Auto-increment keys are `Option<i64>`, not `i64`.** `None` means "let the database assign it";
   `Some(v)` inserts `v` explicitly. With a bare `i64` you must always supply a value, and `0`
   will be inserted as a real key.
@@ -113,7 +113,7 @@ Combine with `&&` / `||` (AND / OR) and `!` (NOT).
 db.add(&User { id: 4, name: "赵六".into(), age: Some(25) })?;
 
 // generated key: the model key must be Option<i64>
-let id: i64 = db.insert_one_id(&Log { id: None, msg: "started".into() })?;
+let id: i64 = db.insert(&Log { id: None, msg: "started".into() })?;
 
 // statement form: write NULL explicitly, or add ON CONFLICT
 db.execute(
@@ -124,8 +124,10 @@ db.execute(
 )?;
 ```
 
-`add` / `add_all` write every model column, including the key when it has a value.
-`insert_one_id` prefers `INSERT … RETURNING` (SQLite ≥ 3.35, MariaDB); where that is unavailable
+`add` / `add_all` write every model column, including the key when it has a value, and return
+the number of rows written — they never ask the engine for a key. `insert` is `add` plus
+"give me the key back": same write, one extra return value.
+`insert` prefers `INSERT … RETURNING` (SQLite ≥ 3.35, MariaDB); where that is unavailable
 it falls back to `last_insert_id()` **and verifies the counter actually moved**, so an engine that
 silently returns a stale id fails loudly instead of handing back a plausible-looking number.
 
@@ -368,11 +370,6 @@ instead of trusting the exit code.
   `(User, Order)` works with or without aliases; a self-join still cannot be mapped into a tuple.
 - **MySQL DDL cannot be rolled back**: DDL implicitly commits, so a migration that fails midway
   leaves partial tables. `supports_transactional_ddl()` reports `false` there.
-
-## Design documents
-
-`01-开发方案.md` / `02-详细设计.md` / `03-实现计划与工作量.md` and the per-milestone completion
-reports live next to this repository (`04`–`19`). `CHANGELOG.md` records what shipped and when.
 
 ## License
 
